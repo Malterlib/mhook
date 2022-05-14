@@ -1,8 +1,9 @@
 // Copyright (C) 2004, Matt Conover (mconover@gmail.com)
 #undef NDEBUG
 #include <assert.h>
-#include <windows.h>
+//#include <windows.h>
 #include "disasm.h"
+#include <string.h>
 
 #ifdef NO_SANITY_CHECKS
 #define NDEBUG
@@ -25,7 +26,7 @@ ARCHITECTURE_FORMAT SupportedArchitectures[] =
 typedef struct _DISASM_ARG_INFO
 {
     INSTRUCTION *MatchedInstruction;
-    BOOL MatchPrefix;
+    bool MatchPrefix;
     U8 *Opcode;
     U32 OpcodeLength;
     INSTRUCTION_TYPE InstructionType;
@@ -36,25 +37,25 @@ typedef struct _DISASM_ARG_INFO
 // Function prototypes
 //////////////////////////////////////////////////////////////////////
 
-BOOL InitInstruction(INSTRUCTION *Instruction, DISASSEMBLER *Disassembler);
+bool InitInstruction(INSTRUCTION *Instruction, DISASSEMBLER *Disassembler);
 static struct _ARCHITECTURE_FORMAT *GetArchitectureFormat(ARCHITECTURE_TYPE Type);
 
 //////////////////////////////////////////////////////////////////////
 // Disassembler setup
 //////////////////////////////////////////////////////////////////////
 
-BOOL InitDisassembler(DISASSEMBLER *Disassembler, ARCHITECTURE_TYPE Architecture)
+bool InitDisassembler(DISASSEMBLER *Disassembler, ARCHITECTURE_TYPE Architecture)
 {
     ARCHITECTURE_FORMAT *ArchFormat;
 
     memset(Disassembler, 0, sizeof(DISASSEMBLER));
     Disassembler->Initialized = DISASSEMBLER_INITIALIZED;
-    
+
     ArchFormat = GetArchitectureFormat(Architecture);
-    if (!ArchFormat) { assert(0); return FALSE; }
+    if (!ArchFormat) { assert(0); return false; }
     Disassembler->ArchType = ArchFormat->Type;
     Disassembler->Functions = ArchFormat->Functions;
-    return TRUE;
+    return true;
 }
 
 void CloseDisassembler(DISASSEMBLER *Disassembler)
@@ -66,22 +67,22 @@ void CloseDisassembler(DISASSEMBLER *Disassembler)
 // Instruction setup
 //////////////////////////////////////////////////////////////////////
 
-BOOL InitInstruction(INSTRUCTION *Instruction, DISASSEMBLER *Disassembler)
+bool InitInstruction(INSTRUCTION *Instruction, DISASSEMBLER *Disassembler)
 {
     memset(Instruction, 0, sizeof(INSTRUCTION));
     Instruction->Initialized = INSTRUCTION_INITIALIZED;
     Instruction->Disassembler = Disassembler;
     memset(Instruction->String, ' ', MAX_OPCODE_DESCRIPTION-1);
     Instruction->String[MAX_OPCODE_DESCRIPTION-1] = '\0';
-    return TRUE;
+    return true;
 }
 
-// If Decode = FALSE, only the following fields are valid:
+// If Decode = false, only the following fields are valid:
 // Instruction->Length, Instruction->Address, Instruction->Prefixes, Instruction->PrefixCount,
 // Instruction->OpcodeBytes, Instruction->Instruction->OpcodeLength, Instruction->Groups,
 // Instruction->Type, Instruction->OperandCount
 //
-// If Disassemble = TRUE, then Instruction->String is valid (also requires Decode = TRUE)
+// If Disassemble = true, then Instruction->String is valid (also requires Decode = true)
 //
 // WARNING: This will overwrite the previously obtained instruction
 INSTRUCTION *GetInstruction(DISASSEMBLER *Disassembler, U64 VirtualAddress, U8 *Address, U32 Flags)
@@ -89,7 +90,7 @@ INSTRUCTION *GetInstruction(DISASSEMBLER *Disassembler, U64 VirtualAddress, U8 *
     if (Disassembler->Initialized != DISASSEMBLER_INITIALIZED) { assert(0); return NULL; }
     assert(Address);
     InitInstruction(&Disassembler->Instruction, Disassembler);
-    Disassembler->Instruction.Address = Address;    
+    Disassembler->Instruction.Address = Address;
     Disassembler->Instruction.VirtualAddressDelta = VirtualAddress - (U64)Address;
     if (!Disassembler->Functions->GetInstruction(&Disassembler->Instruction, Address, Flags))
     {
@@ -98,7 +99,7 @@ INSTRUCTION *GetInstruction(DISASSEMBLER *Disassembler, U64 VirtualAddress, U8 *
 
         // Save the address that failed, in case the lower-level disassembler didn't
         Disassembler->Instruction.Address = Address;
-        Disassembler->Instruction.ErrorOccurred = TRUE;
+        Disassembler->Instruction.ErrorOccurred = true;
         return NULL;
     }
     return &Disassembler->Instruction;

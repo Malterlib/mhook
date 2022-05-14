@@ -12,7 +12,7 @@
 #define GET_MODRM_MOD(a) (((a) >> 6) & 3) // bits 6, 7
 #define GET_MODRM_REG(a) (((a) >> 3) & 7) // bits 3, 4, 5
 #define GET_MODRM_EXT(a) (((a) >> 3) & 7) // bits 3, 4, 5
-#define GET_MODRM_RM(a)  ((a) & 7) // bits 0, 1, 2
+#define GET_MODRM_RM(a)     ((a) & 7) // bits 0, 1, 2
 
 #define GET_SIB_SCALE(a) (((a) >> 6) & 3) // bits 6, 7
 #define GET_SIB_INDEX(a) (((a) >> 3) & 7) // bits 3, 4, 5
@@ -69,9 +69,9 @@
 
 #define SET_REX(rex, src) \
 { \
-    (rex).w = GET_REX_W(src);   \
-    (rex).r = GET_REX_R(src);   \
-    (rex).x = GET_REX_X(src);   \
+    (rex).w = GET_REX_W(src);    \
+    (rex).r = GET_REX_R(src);    \
+    (rex).x = GET_REX_X(src);    \
     (rex).b = GET_REX_B(src); \
 }
 
@@ -133,21 +133,21 @@
 /////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////
 
-static char *Addressing16[8] = {"bx+si","bx+di","bp+si","bp+di","si","di","bp","bx"};
+/*static char *Addressing16[8] = {"bx+si","bx+di","bp+si","bp+di","si","di","bp","bx"};
 static char *MMX_Registers[8] = {"mm0", "mm1", "mm2", "mm3", "mm4", "mm5", "mm6", "mm7"};
 static char *SSE_Registers[8] = {"xmm0", "xmm1", "xmm2", "xmm3", "xmm4", "xmm5", "xmm6", "xmm7"};
 static char *DR_Registers[8] = {"dr0", "dr1", "dr2", "dr3", "dr4", "dr5", "dr6", "dr7"};
 static char *CR_Registers[8] = {"cr0", "cr1", "cr2", "cr3", "cr4", "cr5", "cr6", "cr7"};
 static char *TR_Registers[8] = {"tr0", "tr1", "tr2", "tr3", "tr4", "tr5", "tr6", "tr7"};
-static char *FPU_Registers[8] = {"st(0)", "st(1)", "st(2)", "st(3)", "st(4)", "st(5)", "st(6)", "st(7)"};
+static char *FPU_Registers[8] = {"st(0)", "st(1)", "st(2)", "st(3)", "st(4)", "st(5)", "st(6)", "st(7)"};*/
 static char *Segments[8] = {"es", "cs", "ss", "ds", "fs", "gs", "ERROR", "ERROR"};
-static char *Registers8[8] = {"al", "cl", "dl", "bl", "ah", "ch", "dh", "bh" };
+/*static char *Registers8[8] = {"al", "cl", "dl", "bl", "ah", "ch", "dh", "bh" };
 static char *Registers16[8] = {"ax", "cx", "dx", "bx", "sp", "bp", "si", "di" };
 static char *Registers32[8] = {"eax", "ecx", "edx", "ebx", "esp", "ebp", "esi", "edi" };
 static char *REX_Registers8[16] = {"al", "cl", "dl", "bl", "spl", "bpl", "sil", "dil", "r8b", "r9b", "r10b", "r11b", "r12b", "r13b", "r14b", "r15b" };
 static char *REX_Registers16[16] = {"ax", "cx", "dx", "bx", "sp", "bp", "si", "di", "r8w", "r9w", "r10w", "r11w", "r12w", "r13w", "r14w", "r15w" };
 static char *REX_Registers32[16] = {"eax", "ecx", "edx", "ebx", "esp", "ebp", "esi", "edi", "r8d", "r9d", "r10d", "r11d", "r12d", "r13d", "r14d", "r15d" };
-static char *REX_Registers64[16] = {"rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi", "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15" };
+static char *REX_Registers64[16] = {"rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi", "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15" };*/
 static char *DataSizes[8+1] = {"byte ptr", "word ptr", "dword ptr", "6_byte ptr", "qword ptr", "10_byte ptr", "INVALID PTR", "INVALID PTR", "oword ptr"};
 
 /////////////////////////////////////////////////////////////////////////
@@ -156,13 +156,13 @@ static char *DataSizes[8+1] = {"byte ptr", "word ptr", "dword ptr", "6_byte ptr"
 /////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////
 
-BYTE float_0[10]   = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
-BYTE float_1[10] =   { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0xFF, 0x3F };
-BYTE float_l2t[10] = { 0xFE, 0x8A, 0x1B, 0xCD, 0x4B, 0x78, 0x9A, 0xD4, 0x00, 0x40 };
-BYTE float_l2e[10] = { 0xBC, 0xF0, 0x17, 0x5C, 0x29, 0x3B, 0xAA, 0xB8, 0xFF, 0x3F };
-BYTE float_pi[10]  = { 0x35, 0xC2, 0x68, 0x21, 0xA2, 0xDA, 0x0F, 0xC9, 0x00, 0x40 };
-BYTE float_lg2[10] = { 0x99, 0xF7, 0xCF, 0xFB, 0x84, 0x9A, 0x20, 0x9A, 0xFD, 0x3F };
-BYTE float_ln2[10] = { 0xAC, 0x79, 0xCF, 0xD1, 0xF7, 0x17, 0x72, 0xB1, 0xFE, 0x3F };
+uint8_t float_0[10]   = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+uint8_t float_1[10] =   { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0xFF, 0x3F };
+uint8_t float_l2t[10] = { 0xFE, 0x8A, 0x1B, 0xCD, 0x4B, 0x78, 0x9A, 0xD4, 0x00, 0x40 };
+uint8_t float_l2e[10] = { 0xBC, 0xF0, 0x17, 0x5C, 0x29, 0x3B, 0xAA, 0xB8, 0xFF, 0x3F };
+uint8_t float_pi[10]  = { 0x35, 0xC2, 0x68, 0x21, 0xA2, 0xDA, 0x0F, 0xC9, 0x00, 0x40 };
+uint8_t float_lg2[10] = { 0x99, 0xF7, 0xCF, 0xFB, 0x84, 0x9A, 0x20, 0x9A, 0xFD, 0x3F };
+uint8_t float_ln2[10] = { 0xAC, 0x79, 0xCF, 0xD1, 0xF7, 0x17, 0x72, 0xB1, 0xFE, 0x3F };
 
 /////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////
@@ -287,7 +287,7 @@ X86_OPCODE X86_Opcodes_1[0x100] = // 1 byte opcodes
     { NOGROUP, CPU_I386, ITYPE_BOUNDS, "bound", { AMODE_G | OPTYPE_v | OP_SRC, AMODE_M | OPTYPE_a | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, /* 0x62 */
     { X86_Opcode_63, EXT_64 }, /* 0x63 */
     { PREFIX }, /* 0x64 */
-    { PREFIX }, /* 0x65 */ 
+    { PREFIX }, /* 0x65 */
     { PREFIX }, /* 0x66 */
     { PREFIX }, /* 0x67 */
     { NOGROUP, CPU_I386, ITYPE_PUSH, "push", { AMODE_I | OPTYPE_z | OP_SRC, 0, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, /* 0x68 */
@@ -484,7 +484,7 @@ X86_OPCODE X86_Opcodes_2[0x100] = // 2 byte opcodes
     { NOGROUP, CPU_I386, ITYPE_MOV, "mov", { AMODE_R | OPTYPE_dq | OP_DST, AMODE_D | OPTYPE_dq | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, /* 0x21 */
     { NOGROUP, CPU_I386, ITYPE_MOV, "mov", { AMODE_C | OPTYPE_dq | OP_DST, AMODE_R | OPTYPE_dq | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, /* 0x22 */
     { NOGROUP, CPU_I386, ITYPE_MOV, "mov", { AMODE_D | OPTYPE_dq | OP_DST, AMODE_R | OPTYPE_dq | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, /* 0x23 */
-    { NOINSTR }, /* 0x24 */ 
+    { NOINSTR }, /* 0x24 */
     //{ NOGROUP, CPU_I486, ITYPE_MOV, "mov", { AMODE_R | OPTYPE_d | OP_DST, AMODE_T | OPTYPE_d | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, /* 0x24 */
     { NOINSTR }, /* 0x25 */
     { NOINSTR }, /* 0x26 */
@@ -547,7 +547,7 @@ X86_OPCODE X86_Opcodes_2[0x100] = // 2 byte opcodes
     { NOGROUP, CPU_PENTIUM3, ITYPE_SSE_DIV, "divps", { AMODE_V | OPTYPE_ps | OP_DST, AMODE_W | OPTYPE_ps | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, /* 0x5E */
     { NOGROUP, CPU_PENTIUM3, ITYPE_SSE, "maxps", { AMODE_V | OPTYPE_ps | OP_DST, AMODE_W | OPTYPE_ps | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, /* 0x5F */
     { NOGROUP, CPU_PENTIUM2, ITYPE_MMX, "punpcklbw", { AMODE_P | OPTYPE_q | OP_DST, AMODE_Q | OPTYPE_d | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, /* 0x60 */
-    { NOGROUP, CPU_PENTIUM2, ITYPE_MMX, "punpcklwd", { AMODE_P | OPTYPE_q | OP_DST, AMODE_Q | OPTYPE_d | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, /* 0x61 */ 
+    { NOGROUP, CPU_PENTIUM2, ITYPE_MMX, "punpcklwd", { AMODE_P | OPTYPE_q | OP_DST, AMODE_Q | OPTYPE_d | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, /* 0x61 */
     { NOGROUP, CPU_PENTIUM2, ITYPE_MMX, "punpckldq", { AMODE_P | OPTYPE_q | OP_DST, AMODE_Q | OPTYPE_d | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, /* 0x62 */
     { NOGROUP, CPU_PENTIUM2, ITYPE_MMX, "packsswb", { AMODE_P | OPTYPE_q | OP_DST, AMODE_Q | OPTYPE_q | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, /* 0x63 */
     { NOGROUP, CPU_PENTIUM2, ITYPE_MMX_CMP, "pcmpgtb", { AMODE_P | OPTYPE_q | OP_DST, AMODE_Q | OPTYPE_q | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, /* 0x64 */
@@ -705,7 +705,7 @@ X86_OPCODE X86_Opcodes_2[0x100] = // 2 byte opcodes
     { NOGROUP, CPU_PENTIUM2, ITYPE_MMX_ADD, "paddb", { AMODE_P | OPTYPE_q | OP_DST, AMODE_Q | OPTYPE_q | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, /* 0xFC */
     { NOGROUP, CPU_PENTIUM2, ITYPE_MMX_ADD, "paddw", { AMODE_P | OPTYPE_q | OP_DST, AMODE_Q | OPTYPE_q | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, /* 0xFD */
     { NOGROUP, CPU_PENTIUM2, ITYPE_MMX_ADD, "paddd", { AMODE_P | OPTYPE_q | OP_DST, AMODE_Q | OPTYPE_q | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, /* 0xFE */
-    { NOINSTR } /* 0xFF */, 
+    { NOINSTR } /* 0xFF */,
 };
 
 /////////////////////////////////////////////////////////////////////////
@@ -914,7 +914,7 @@ X86_OPCODE X86_Group_8[8] = // 0F BA
     { NOGROUP, CPU_I386, ITYPE_BITTEST, "bt", { AMODE_E | OPTYPE_v | OP_SRC | OP_DST, AMODE_I | OPTYPE_b | OP_SRC, 0 }, NOCOND, FLAG_CF_MOD, NOACTION, IGNORED }, /* 0x04 */
     { NOGROUP, CPU_I386, ITYPE_BITTEST, "bts", { AMODE_E | OPTYPE_v | OP_SRC | OP_DST, AMODE_I | OPTYPE_b | OP_SRC, 0 }, NOCOND, FLAG_CF_MOD, NOACTION, IGNORED }, /* 0x05 */
     { NOGROUP, CPU_I386, ITYPE_BITTEST, "btr", { AMODE_E | OPTYPE_v | OP_SRC | OP_DST, AMODE_I | OPTYPE_b | OP_SRC, 0 }, NOCOND, FLAG_CF_MOD, NOACTION, IGNORED }, /* 0x06 */
-    { NOGROUP, CPU_I386, ITYPE_BITTEST, "btc", { AMODE_E | OPTYPE_v | OP_SRC | OP_DST, AMODE_I | OPTYPE_b | OP_SRC, 0 }, NOCOND, FLAG_CF_MOD, NOACTION, IGNORED }, /* 0x07 */ 
+    { NOGROUP, CPU_I386, ITYPE_BITTEST, "btc", { AMODE_E | OPTYPE_v | OP_SRC | OP_DST, AMODE_I | OPTYPE_b | OP_SRC, 0 }, NOCOND, FLAG_CF_MOD, NOACTION, IGNORED }, /* 0x07 */
 };
 
 X86_OPCODE X86_Group_9[8] = // 0F C7
@@ -1009,8 +1009,8 @@ X86_OPCODE X86_Group_15[8] = // 0F 73 (NOTE: AMD64 labels this Group 14)
     { NOGROUP, CPU_PENTIUM2, ITYPE_MMX, "psrldq", { AMODE_PR | OPTYPE_q | OP_DST, AMODE_I | OPTYPE_b | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, /* 0x03 */
     { NOINSTR }, /* 0x04 */
     { NOINSTR }, /* 0x05 */
-    { NOGROUP, CPU_PENTIUM2, ITYPE_MMX, "psllq", { AMODE_PR | OPTYPE_q | OP_DST, AMODE_I | OPTYPE_b | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, /* 0x06 */ 
-    { NOGROUP, CPU_PENTIUM2, ITYPE_MMX, "pslldq", { AMODE_PR | OPTYPE_q | OP_DST, AMODE_I | OPTYPE_b | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED } /* 0x07 */ 
+    { NOGROUP, CPU_PENTIUM2, ITYPE_MMX, "psllq", { AMODE_PR | OPTYPE_q | OP_DST, AMODE_I | OPTYPE_b | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, /* 0x06 */
+    { NOGROUP, CPU_PENTIUM2, ITYPE_MMX, "pslldq", { AMODE_PR | OPTYPE_q | OP_DST, AMODE_I | OPTYPE_b | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED } /* 0x07 */
 };
 
 X86_OPCODE X86_Group_16[8] = // 0F AE (NOTE: AMD64 labels this Group 15)
@@ -1020,8 +1020,8 @@ X86_OPCODE X86_Group_16[8] = // 0F AE (NOTE: AMD64 labels this Group 15)
     { NOGROUP, CPU_PENTIUM3, ITYPE_SSE, "ldmxcsr", { AMODE_M | OPTYPE_d | OP_SRC, 0, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, /* 0x02 */
     { NOGROUP, CPU_PENTIUM3, ITYPE_SSE, "stmxcsr", { AMODE_M | OPTYPE_d | OP_DST, 0, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, /* 0x03 */
     { NOINSTR }, /* 0x04 */
-    { NOGROUP, CPU_PENTIUM2, ITYPE_SYSTEM, "lfence", NOARGS, NOCOND, NOCHANGE, SERIALIZE_READ, IGNORED }, /* 0x05 */ 
-    { NOGROUP, CPU_PENTIUM2, ITYPE_SYSTEM, "mfence", NOARGS, NOCOND, NOCHANGE, SERIALIZE_ALL, IGNORED }, /* 0x06 */ 
+    { NOGROUP, CPU_PENTIUM2, ITYPE_SYSTEM, "lfence", NOARGS, NOCOND, NOCHANGE, SERIALIZE_READ, IGNORED }, /* 0x05 */
+    { NOGROUP, CPU_PENTIUM2, ITYPE_SYSTEM, "mfence", NOARGS, NOCOND, NOCHANGE, SERIALIZE_ALL, IGNORED }, /* 0x06 */
     { NOGROUP, CPU_PENTIUM2, ITYPE_SYSTEM, "sfence", NOARGS, NOCOND, NOCHANGE, SERIALIZE_WRITE, IGNORED } /* 0x07 */
 };
 
@@ -1213,7 +1213,7 @@ X86_OPCODE X86_ESC_1[0x48] = // D9
     { NOGROUP, CPU_I287, ITYPE_FPU, "fchs", { OPTYPE_ST0 | OP_SRC | OP_DST, 0, 0 }, NOCOND, FPU_C1_MOD, NOACTION, IGNORED }, // x0
     { NOGROUP, CPU_I287, ITYPE_FPU, "fabs", { OPTYPE_ST0 | OP_SRC | OP_DST, 0, 0 }, NOCOND, FPU_C1_MOD, NOACTION, IGNORED }, // x1
     { NOINSTR }, // x2
-    { NOINSTR }, // x3 
+    { NOINSTR }, // x3
     { NOGROUP, CPU_I287, ITYPE_FPU, "ftst", { OPTYPE_ST0 | OP_SRC, OPTYPE_FLDZ | OP_SRC, 0 }, NOCOND, FPU_C1_MOD, NOACTION, IGNORED }, // x4
     { NOGROUP, CPU_I287, ITYPE_FPU, "fxam", { OPTYPE_ST0 | OP_SRC, 0, 0 }, NOCOND, FPU_ALL_MOD, NOACTION, IGNORED }, // x5
     { NOINSTR }, // x6
@@ -1360,7 +1360,7 @@ X86_OPCODE X86_ESC_3[0x48] = // DB
     { NOGROUP, CPU_I287, ITYPE_FLOAD, "fld", { AMODE_M | OPTYPE_se | OP_SRC, 0, 0 }, NOCOND, FPU_C1_MOD, FPU_STACK_PUSH, IGNORED }, // 0x05
     { NOINSTR }, // 0x06
     { NOGROUP, CPU_I287, ITYPE_FSTORE, "fstp", { AMODE_M | OPTYPE_se | OP_DST, OPTYPE_ST0 | OP_SRC, 0 }, NOCOND, FPU_C1_MOD, FPU_STACK_POP, IGNORED }, // 0x07
-    
+
     //
     // ModRM >= C0
     // Index 0x08-0x47 = ModRM 0xC0-0xFF
@@ -1541,7 +1541,7 @@ X86_OPCODE X86_ESC_5[0x48] = // DD
     //
     // ModRM < C0
     // Index 0x00-0x07 = opcode extension
-    // 
+    //
     //
 
     { NOGROUP, CPU_I287, ITYPE_FLOAD, "fld", { AMODE_M | OPTYPE_sd | OP_SRC, 0, 0 }, NOCOND, FPU_C1_MOD, FPU_STACK_PUSH, IGNORED }, // x0
@@ -1848,7 +1848,7 @@ X86_OPCODE X86_SSE[0x300] =
       { NOINSTR }, // xD
       { NOINSTR }, // xE
       { NOINSTR }, // xF
-    
+
         /* 1x */
       { NOGROUP, CPU_PENTIUM4, ITYPE_SSE2_MOV, "movupd", { AMODE_V | OPTYPE_pd | OP_DST, AMODE_W | OPTYPE_pd | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, // x0
       { NOGROUP, CPU_PENTIUM4, ITYPE_SSE2_MOV, "movupd", { AMODE_W | OPTYPE_pd | OP_DST, AMODE_V | OPTYPE_pd | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, // x1
@@ -1866,7 +1866,7 @@ X86_OPCODE X86_SSE[0x300] =
       { NOINSTR }, // xD
       { NOINSTR }, // xE
       { NOINSTR }, // xF
-    
+
         /* 2x */
       { NOINSTR }, // x0
       { NOINSTR }, // x1
@@ -1884,7 +1884,7 @@ X86_OPCODE X86_SSE[0x300] =
       { NOGROUP, CPU_PENTIUM4, ITYPE_SSE2, "cvtpd2pi", { AMODE_P | OPTYPE_q | OP_DST, AMODE_W | OPTYPE_pd | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, // xD
       { NOGROUP, CPU_PENTIUM4, ITYPE_SSE2_CMP, "ucomisd", { AMODE_V | OPTYPE_sd | OP_SRC, AMODE_W | OPTYPE_sd | OP_SRC, 0 }, NOCOND, FLAG_ZF_MOD | FLAG_CF_MOD | FLAG_PF_MOD | FLAG_OF_CLR | FLAG_SF_CLR | FLAG_AF_CLR, NOACTION, IGNORED }, // xE
       { NOGROUP, CPU_PENTIUM4, ITYPE_SSE2_CMP, "comisd", { AMODE_V | OPTYPE_pd | OP_SRC, AMODE_W | OPTYPE_sd | OP_SRC, 0 }, NOCOND, FLAG_ZF_MOD | FLAG_CF_MOD | FLAG_PF_MOD | FLAG_OF_CLR | FLAG_SF_CLR | FLAG_AF_CLR, NOACTION, IGNORED }, // xF
-    
+
         /* 3x */
       { NOINSTR }, // x0
       { NOINSTR }, // x1
@@ -1902,7 +1902,7 @@ X86_OPCODE X86_SSE[0x300] =
       { NOINSTR }, // xD
       { NOINSTR }, // xE
       { NOINSTR }, // xF
-    
+
         /* 4x */
       { NOINSTR }, // x0
       { NOINSTR }, // x1
@@ -1920,7 +1920,7 @@ X86_OPCODE X86_SSE[0x300] =
       { NOINSTR }, // xD
       { NOINSTR }, // xE
       { NOINSTR }, // xF
-    
+
         /* 5x */
       { NOGROUP, CPU_PENTIUM4, ITYPE_SSE2, "movmskpd", { AMODE_G | OPTYPE_d | OP_DST, AMODE_VR | OPTYPE_pd | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, // x0
       { NOGROUP, CPU_PENTIUM4, ITYPE_SSE2, "sqrtpd", { AMODE_V | OPTYPE_pd | OP_DST, AMODE_W | OPTYPE_pd | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, // x1
@@ -1938,7 +1938,7 @@ X86_OPCODE X86_SSE[0x300] =
       { NOGROUP, CPU_PENTIUM4, ITYPE_SSE2, "minpd", { AMODE_V | OPTYPE_pd | OP_DST, AMODE_W | OPTYPE_pd | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, // xD
       { NOGROUP, CPU_PENTIUM4, ITYPE_SSE2_DIV, "divpd", { AMODE_V | OPTYPE_pd | OP_DST, AMODE_W | OPTYPE_pd | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, // xE
       { NOGROUP, CPU_PENTIUM4, ITYPE_SSE2, "maxpd", { AMODE_V | OPTYPE_pd | OP_DST, AMODE_W | OPTYPE_pd | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, // xF
-    
+
         /* 6x */
       { NOGROUP, CPU_PENTIUM4, ITYPE_SSE2, "punpcklbw", { AMODE_V | OPTYPE_o | OP_DST, AMODE_W | OPTYPE_q | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, // x0
       { NOGROUP, CPU_PENTIUM4, ITYPE_SSE2, "punpcklwd", { AMODE_V | OPTYPE_o | OP_DST, AMODE_W | OPTYPE_q | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, // x1
@@ -1956,7 +1956,7 @@ X86_OPCODE X86_SSE[0x300] =
       { NOGROUP, CPU_PENTIUM4, ITYPE_SSE2, "punpckhqdq", { AMODE_V | OPTYPE_o | OP_DST, AMODE_W | OPTYPE_q | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, // xD
       { NOGROUP, CPU_PENTIUM4, ITYPE_SSE2_MOV, "movd", { AMODE_V | OPTYPE_o | OP_DST, AMODE_E | OPTYPE_dq | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, // xE
       { NOGROUP, CPU_PENTIUM4, ITYPE_SSE2_MOV, "movdqa", { AMODE_V | OPTYPE_o | OP_DST, AMODE_W | OPTYPE_o | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, // xF
-    
+
         /* 7x */
         { NOGROUP, CPU_PENTIUM4, ITYPE_SSE2, "pshufd", { AMODE_V | OPTYPE_o | OP_DST, AMODE_W | OPTYPE_o | OP_SRC, AMODE_I | OPTYPE_b | OP_SRC }, NOCOND, NOCHANGE, NOACTION, IGNORED }, // x0
       { X86_SSE2_Group_13, GROUP }, // x1
@@ -1974,7 +1974,7 @@ X86_OPCODE X86_SSE[0x300] =
       { NOGROUP, CPU_PENTIUM4, ITYPE_SSE3_SUB, "hsubpd", { AMODE_V | OPTYPE_o | OP_DST, AMODE_W | OPTYPE_o | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, // xD
       { NOGROUP, CPU_PENTIUM4, ITYPE_SSE2_MOV, "movd", { AMODE_E | OPTYPE_dq | OP_DST, AMODE_V | OPTYPE_dq | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, // xE
       { NOGROUP, CPU_PENTIUM4, ITYPE_SSE2_MOV, "movdqa", { AMODE_V | OPTYPE_o | OP_DST, AMODE_W | OPTYPE_o | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, // xF
-    
+
         /* 8x */
       { NOINSTR }, // x0
       { NOINSTR }, // x1
@@ -1992,7 +1992,7 @@ X86_OPCODE X86_SSE[0x300] =
       { NOINSTR }, // xD
       { NOINSTR }, // xE
       { NOINSTR }, // xF
-    
+
         /* 9x */
       { NOINSTR }, // x0
       { NOINSTR }, // x1
@@ -2010,7 +2010,7 @@ X86_OPCODE X86_SSE[0x300] =
       { NOINSTR }, // xD
       { NOINSTR }, // xE
       { NOINSTR }, // xF
-    
+
         /* Ax */
       { NOINSTR }, // x0
       { NOINSTR }, // x1
@@ -2028,7 +2028,7 @@ X86_OPCODE X86_SSE[0x300] =
       { NOINSTR }, // xD
       { NOINSTR }, // xE
       { NOINSTR }, // xF
-    
+
         /* Bx */
       { NOINSTR }, // x0
       { NOINSTR }, // x1
@@ -2046,7 +2046,7 @@ X86_OPCODE X86_SSE[0x300] =
       { NOINSTR }, // xD
       { NOINSTR }, // xE
       { NOINSTR }, // xF
-    
+
         /* Cx */
       { NOINSTR }, // x0
       { NOINSTR }, // x1
@@ -2064,7 +2064,7 @@ X86_OPCODE X86_SSE[0x300] =
       { NOINSTR }, // xD
       { NOINSTR }, // xE
       { NOINSTR }, // xF
-    
+
         /* Dx */
       { NOGROUP, CPU_PENTIUM4, ITYPE_SSE3, "addsubpd", { AMODE_V | OPTYPE_o | OP_DST, AMODE_W | OPTYPE_o | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, // x0
       { NOGROUP, CPU_PENTIUM4, ITYPE_SSE2, "psrlw", { AMODE_V | OPTYPE_o | OP_DST, AMODE_W | OPTYPE_o | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, // x1
@@ -2082,7 +2082,7 @@ X86_OPCODE X86_SSE[0x300] =
       { NOGROUP, CPU_PENTIUM4, ITYPE_SSE2_ADD, "paddusw", { AMODE_V | OPTYPE_o | OP_DST, AMODE_W | OPTYPE_o | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, // xD
       { NOGROUP, CPU_PENTIUM4, ITYPE_SSE2, "pmaxub", { AMODE_V | OPTYPE_o | OP_DST, AMODE_W | OPTYPE_o | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, // xE
       { NOGROUP, CPU_PENTIUM4, ITYPE_SSE2_AND, "pandn", { AMODE_V | OPTYPE_o | OP_DST, AMODE_W | OPTYPE_o | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, // xF
-    
+
         /* Ex */
       { NOGROUP, CPU_PENTIUM4, ITYPE_SSE2, "pavgb", { AMODE_V | OPTYPE_o | OP_DST, AMODE_W | OPTYPE_o | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, // x0
       { NOGROUP, CPU_PENTIUM4, ITYPE_SSE2, "psraw", { AMODE_V | OPTYPE_o | OP_DST, AMODE_W | OPTYPE_o | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, // x1
@@ -2100,7 +2100,7 @@ X86_OPCODE X86_SSE[0x300] =
       { NOGROUP, CPU_PENTIUM4, ITYPE_SSE2_ADD, "paddsw", { AMODE_V | OPTYPE_o | OP_DST, AMODE_W | OPTYPE_o | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, // xD
       { NOGROUP, CPU_PENTIUM4, ITYPE_SSE2, "pmaxuw", { AMODE_V | OPTYPE_o | OP_DST, AMODE_W | OPTYPE_o | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, // xE
       { NOGROUP, CPU_PENTIUM4, ITYPE_SSE2_XOR, "pxor", { AMODE_V | OPTYPE_o | OP_DST, AMODE_W | OPTYPE_o | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, // xF
-    
+
         /* Fx */
       { NOINSTR }, // x0
       { NOGROUP, CPU_PENTIUM4, ITYPE_SSE2, "psllw", { AMODE_V | OPTYPE_o | OP_DST, AMODE_W | OPTYPE_o | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, // x1
@@ -2137,7 +2137,7 @@ X86_OPCODE X86_SSE[0x300] =
       { NOINSTR }, // xD
       { NOINSTR }, // xE
       { NOINSTR }, // xF
-    
+
         /* 1x */
       { NOGROUP, CPU_PENTIUM4, ITYPE_SSE2_MOV, "movsd", { AMODE_V | OPTYPE_sdo | OP_DST, AMODE_W | OPTYPE_sd | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, // x0
       { NOGROUP, CPU_PENTIUM4, ITYPE_SSE2_MOV, "movsd", { AMODE_W | OPTYPE_sd | OP_DST, AMODE_V | OPTYPE_sd | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, // x1
@@ -2155,7 +2155,7 @@ X86_OPCODE X86_SSE[0x300] =
       { NOINSTR }, // xD
       { NOINSTR }, // xE
       { NOINSTR }, // xF
-    
+
         /* 2x */
       { NOINSTR }, // x0
       { NOINSTR }, // x1
@@ -2173,7 +2173,7 @@ X86_OPCODE X86_SSE[0x300] =
       { NOGROUP, CPU_PENTIUM4, ITYPE_SSE2, "cvtsd2si", { AMODE_G | OPTYPE_dq | OP_DST, AMODE_W | OPTYPE_sd | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, // xD
       { NOINSTR }, // xE
       { NOINSTR }, // xF
-    
+
         /* 3x */
       { NOINSTR }, // x0
       { NOINSTR }, // x1
@@ -2191,7 +2191,7 @@ X86_OPCODE X86_SSE[0x300] =
       { NOINSTR }, // xD
       { NOINSTR }, // xE
       { NOINSTR }, // xF
-    
+
         /* 4x */
       { NOINSTR }, // x0
       { NOINSTR }, // x1
@@ -2209,7 +2209,7 @@ X86_OPCODE X86_SSE[0x300] =
       { NOINSTR }, // xD
       { NOINSTR }, // xE
       { NOINSTR }, // xF
-    
+
         /* 5x */
       { NOINSTR }, // x0
       { NOGROUP, CPU_PENTIUM4, ITYPE_SSE2, "sqrtsd", { AMODE_V | OPTYPE_sd | OP_DST, AMODE_W | OPTYPE_sd | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, // x1
@@ -2227,7 +2227,7 @@ X86_OPCODE X86_SSE[0x300] =
       { NOGROUP, CPU_PENTIUM4, ITYPE_SSE2, "minsd", { AMODE_V | OPTYPE_sd | OP_DST, AMODE_W | OPTYPE_sd | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, // xD
       { NOGROUP, CPU_PENTIUM4, ITYPE_SSE2_DIV, "divsd", { AMODE_V | OPTYPE_sd | OP_DST, AMODE_W | OPTYPE_sd | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, // xE
       { NOGROUP, CPU_PENTIUM4, ITYPE_SSE2, "maxsd", { AMODE_V | OPTYPE_sd | OP_DST, AMODE_W | OPTYPE_sd | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, // xF
-    
+
         /* 6x */
       { NOINSTR }, // x0
       { NOINSTR }, // x1
@@ -2245,7 +2245,7 @@ X86_OPCODE X86_SSE[0x300] =
       { NOINSTR }, // xD
       { NOINSTR }, // xE
       { NOGROUP, CPU_PENTIUM4, ITYPE_SSE2_MOV, "movdqa", { AMODE_V | OPTYPE_o | OP_DST, AMODE_W | OPTYPE_o | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, // xF
-    
+
         /* 7x */
       { NOGROUP, CPU_PENTIUM4, ITYPE_SSE2, "pshuflw", { AMODE_V | OPTYPE_q | OP_DST, AMODE_W | OPTYPE_q | OP_SRC, AMODE_I | OPTYPE_b | OP_SRC }, NOCOND, NOCHANGE, NOACTION, IGNORED }, // x0
       { NOINSTR }, // x1
@@ -2263,7 +2263,7 @@ X86_OPCODE X86_SSE[0x300] =
       { NOGROUP, CPU_PENTIUM4, ITYPE_SSE3_SUB, "hsubps", { AMODE_V | OPTYPE_o | OP_DST, AMODE_W | OPTYPE_o | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, // xD
       { NOINSTR }, // xE
       { NOINSTR }, // xF
-    
+
         /* 8x */
       { NOINSTR }, // x0
       { NOINSTR }, // x1
@@ -2281,7 +2281,7 @@ X86_OPCODE X86_SSE[0x300] =
       { NOINSTR }, // xD
       { NOINSTR }, // xE
       { NOINSTR }, // xF
-    
+
         /* 9x */
       { NOINSTR }, // x0
       { NOINSTR }, // x1
@@ -2299,7 +2299,7 @@ X86_OPCODE X86_SSE[0x300] =
       { NOINSTR }, // xD
       { NOINSTR }, // xE
       { NOINSTR }, // xF
-    
+
         /* Ax */
       { NOINSTR }, // x0
       { NOINSTR }, // x1
@@ -2317,7 +2317,7 @@ X86_OPCODE X86_SSE[0x300] =
       { NOINSTR }, // xD
       { NOINSTR }, // xE
       { NOINSTR }, // xF
-    
+
         /* Bx */
       { NOINSTR }, // x0
       { NOINSTR }, // x1
@@ -2335,7 +2335,7 @@ X86_OPCODE X86_SSE[0x300] =
       { NOINSTR }, // xD
       { NOINSTR }, // xE
       { NOINSTR }, // xF
-    
+
         /* Cx */
       { NOINSTR }, // x0
       { NOINSTR }, // x1
@@ -2353,7 +2353,7 @@ X86_OPCODE X86_SSE[0x300] =
       { NOINSTR }, // xD
       { NOINSTR }, // xE
       { NOINSTR }, // xF
-    
+
         /* Dx */
       { NOGROUP, CPU_PENTIUM3, ITYPE_SSE3, "addsubps", { AMODE_V | OPTYPE_o | OP_DST, AMODE_W | OPTYPE_o | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, // x0
       { NOINSTR }, // x1
@@ -2371,7 +2371,7 @@ X86_OPCODE X86_SSE[0x300] =
       { NOINSTR }, // xD
       { NOINSTR }, // xE
       { NOINSTR }, // xF
-    
+
         /* Ex */
       { NOINSTR }, // x0
       { NOINSTR }, // x1
@@ -2389,7 +2389,7 @@ X86_OPCODE X86_SSE[0x300] =
       { NOINSTR }, // xD
       { NOINSTR }, // xE
       { NOINSTR }, // xF
-    
+
         /* Fx */
       { NOGROUP, CPU_PENTIUM4, ITYPE_SSE3, "lddqu", { AMODE_V | OPTYPE_o | OP_DST, AMODE_M | OPTYPE_o | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, // x0
       { NOINSTR }, // x1
@@ -2426,7 +2426,7 @@ X86_OPCODE X86_SSE[0x300] =
       { NOINSTR }, // xD
       { NOINSTR }, // xE
       { NOINSTR }, // xF
-    
+
         /* 1x */
       { NOGROUP, CPU_PENTIUM4, ITYPE_SSE2_MOV, "movss", { AMODE_V | OPTYPE_sso | OP_DST, AMODE_W | OPTYPE_ss | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, // x0
       { NOGROUP, CPU_PENTIUM4, ITYPE_SSE2_MOV, "movss", { AMODE_W | OPTYPE_ss | OP_DST, AMODE_V | OPTYPE_ss | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, // x1
@@ -2444,7 +2444,7 @@ X86_OPCODE X86_SSE[0x300] =
       { NOINSTR }, // xD
       { NOINSTR }, // xE
       { NOINSTR }, // xF
-    
+
         /* 2x */
       { NOINSTR }, // x0
       { NOINSTR }, // x1
@@ -2462,7 +2462,7 @@ X86_OPCODE X86_SSE[0x300] =
       { NOGROUP, CPU_PENTIUM3, ITYPE_SSE, "cvtss2si", { AMODE_G | OPTYPE_dq | OP_DST, AMODE_W | OPTYPE_ss | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, // xD
       { NOINSTR }, // xE
       { NOINSTR }, // xF
-    
+
         /* 3x */
       { NOINSTR }, // x0
       { NOINSTR }, // x1
@@ -2480,7 +2480,7 @@ X86_OPCODE X86_SSE[0x300] =
       { NOINSTR }, // xD
       { NOINSTR }, // xE
       { NOINSTR }, // xF
-    
+
         /* 4x */
       { NOINSTR }, // x0
       { NOINSTR }, // x1
@@ -2498,7 +2498,7 @@ X86_OPCODE X86_SSE[0x300] =
       { NOINSTR }, // xD
       { NOINSTR }, // xE
       { NOINSTR }, // xF
-    
+
         /* 5x */
       { NOINSTR }, // x0
       { NOGROUP, CPU_PENTIUM4, ITYPE_SSE2, "sqrtss", { AMODE_V | OPTYPE_ss | OP_DST, AMODE_W | OPTYPE_ss | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, // x1
@@ -2516,7 +2516,7 @@ X86_OPCODE X86_SSE[0x300] =
       { NOGROUP, CPU_PENTIUM4, ITYPE_SSE2, "minss", { AMODE_V | OPTYPE_ss | OP_DST, AMODE_W | OPTYPE_ss | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, // xD
       { NOGROUP, CPU_PENTIUM4, ITYPE_SSE2_DIV, "divss", { AMODE_V | OPTYPE_ss | OP_DST, AMODE_W | OPTYPE_ss | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, // xE
       { NOGROUP, CPU_PENTIUM4, ITYPE_SSE2, "maxss", { AMODE_V | OPTYPE_ss | OP_DST, AMODE_W | OPTYPE_ss | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, // xF
-    
+
         /* 6x */
       { NOINSTR }, // x0
       { NOINSTR }, // x1
@@ -2534,7 +2534,7 @@ X86_OPCODE X86_SSE[0x300] =
       { NOINSTR }, // xD
       { NOINSTR }, // xE
       { NOGROUP, CPU_PENTIUM4, ITYPE_SSE2_MOV, "movdqu", { AMODE_V | OPTYPE_o | OP_DST, AMODE_W | OPTYPE_o | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, // xF
-    
+
         /* 7x */
       { NOGROUP, CPU_PENTIUM4, ITYPE_SSE2, "pshufhw", { AMODE_V | OPTYPE_q | OP_DST, AMODE_W | OPTYPE_q | OP_SRC, AMODE_I | OPTYPE_b | OP_SRC }, NOCOND, NOCHANGE, NOACTION, IGNORED }, // x0
       { NOINSTR }, // x1
@@ -2552,7 +2552,7 @@ X86_OPCODE X86_SSE[0x300] =
       { NOINSTR }, // xD
       { NOGROUP, CPU_PENTIUM4, ITYPE_SSE2_MOV, "movq", { AMODE_V | OPTYPE_q | OP_DST, AMODE_W | OPTYPE_q | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, // xE
       { NOGROUP, CPU_PENTIUM4, ITYPE_SSE2_MOV, "movdqu", { AMODE_W | OPTYPE_o | OP_DST, AMODE_V | OPTYPE_o | OP_SRC, 0 }, NOCOND, NOCHANGE, NOACTION, IGNORED }, // xF
-    
+
         /* 8x */
       { NOINSTR }, // x0
       { NOINSTR }, // x1
@@ -2570,7 +2570,7 @@ X86_OPCODE X86_SSE[0x300] =
       { NOINSTR }, // xD
       { NOINSTR }, // xE
       { NOINSTR }, // xF
-    
+
         /* 9x */
       { NOINSTR }, // x0
       { NOINSTR }, // x1
@@ -2588,7 +2588,7 @@ X86_OPCODE X86_SSE[0x300] =
       { NOINSTR }, // xD
       { NOINSTR }, // xE
       { NOINSTR }, // xF
-    
+
         /* Ax */
       { NOINSTR }, // x0
       { NOINSTR }, // x1
@@ -2606,7 +2606,7 @@ X86_OPCODE X86_SSE[0x300] =
       { NOINSTR }, // xD
       { NOINSTR }, // xE
       { NOINSTR }, // xF
-    
+
         /* Bx */
       { NOINSTR }, // x0
       { NOINSTR }, // x1
@@ -2624,7 +2624,7 @@ X86_OPCODE X86_SSE[0x300] =
       { NOINSTR }, // xD
       { NOINSTR }, // xE
       { NOINSTR }, // xF
-    
+
         /* Cx */
       { NOINSTR }, // x0
       { NOINSTR }, // x1
@@ -2642,7 +2642,7 @@ X86_OPCODE X86_SSE[0x300] =
       { NOINSTR }, // xD
       { NOINSTR }, // xE
       { NOINSTR }, // xF
-    
+
         /* Dx */
       { NOINSTR }, // x0
       { NOINSTR }, // x1
@@ -2660,7 +2660,7 @@ X86_OPCODE X86_SSE[0x300] =
       { NOINSTR }, // xD
       { NOINSTR }, // xE
       { NOINSTR }, // xF
-    
+
         /* Ex */
       { NOINSTR }, // x0
       { NOINSTR }, // x1
@@ -2678,7 +2678,7 @@ X86_OPCODE X86_SSE[0x300] =
       { NOINSTR }, // xD
       { NOINSTR }, // xE
       { NOINSTR }, // xF
-    
+
         /* Fx */
       { NOINSTR }, // x0
       { NOINSTR }, // x1
@@ -3060,7 +3060,7 @@ X86_OPCODE X86_3DNOW_0F[0x100] =
     { NOINSTR }, /* FC */
     { NOINSTR }, /* FD */
     { NOINSTR }, /* FE */
-    { NOINSTR } /* FF */
+    { NOINSTR }    /* FF */
 };
 
 /////////////////////////////////////////////////////////////////////////
@@ -3387,7 +3387,7 @@ X86_OPCODE X86_0F01_ModRM[0x100] =
 
 #define S2 1 // SSE2
 #define S3 2 // SSE3
-BYTE X86_ModRM_1[0x100] =
+uint8_t X86_ModRM_1[0x100] =
 {
   //      x0 x1 x2 x3 x4 x5 x6 x7 x8 x9 xA xB xC xD xE xF
   /* 0x */ 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 
@@ -3407,7 +3407,7 @@ BYTE X86_ModRM_1[0x100] =
   /* Ex */ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
   /* Fx */ 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1
 };
-BYTE X86_ModRM_2[0x100] =
+uint8_t X86_ModRM_2[0x100] =
 {
   //      x0 x1 x2 x3 x4 x5 x6 x7 x8 x9 xA xB xC xD xE xF
   /* 0x */ 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 
@@ -3428,7 +3428,7 @@ BYTE X86_ModRM_2[0x100] =
   /* Fx */ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0
 };
 
-BYTE X86_SSE_2[0x100] = 
+uint8_t X86_SSE_2[0x100] = 
 {
   /*      x0 x1 x2 x3 x4 x5 x6 x7 x8 x9 xA xB xC xD xE xF        */
   /* 0x */ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -3454,7 +3454,7 @@ BYTE X86_SSE_2[0x100] =
 // add, adc, and, btc, btr, bts, cmpxchg, cmpxchg8, dec, inc, 
 // neg, not, or, sbb, sub, xor, xadd, xchg
 #define GR 2
-BYTE X86_LockPrefix_1[0x100] =
+uint8_t X86_LockPrefix_1[0x100] =
 {
   //       x0  x1  x2  x3  x4  x5  x6  x7  x8  x9  xA  xB  xC  xD  xE  xF
   /* 0x */  1,  1,  1,  1,  0,  0,  0,  0,  1,  1,  1,  1,  0,  0,  0,  0, 
@@ -3475,7 +3475,7 @@ BYTE X86_LockPrefix_1[0x100] =
   /* Fx */  0,  0,  0,  0,  0,  0, GR, GR,  0,  0,  0,  0,  0,  0, GR, GR
 };
 
-BYTE X86_LockPrefix_2[0x100] =
+uint8_t X86_LockPrefix_2[0x100] =
 {
   //       x0  x1  x2  x3  x4  x5  x6  x7  x8  x9  xA  xB  xC  xD  xE  xF
   /* 0x */  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 
@@ -3496,7 +3496,7 @@ BYTE X86_LockPrefix_2[0x100] =
   /* Fx */  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0
 };
 
-BYTE X86_LockPrefix_Groups[17][8] =
+uint8_t X86_LockPrefix_Groups[17][8] =
 {
 //  x0  x1  x2  x3  x4  x5  x6  x7
     {  1,  1,  1,  1,  1,  1,  1,  0 }, // group 1
@@ -3519,7 +3519,7 @@ BYTE X86_LockPrefix_Groups[17][8] =
 };
 
 #define X86_MAX_GROUP 19
-BYTE X86_Groups_1[0x100] = // one-byte opcodes
+uint8_t X86_Groups_1[0x100] = // one-byte opcodes
 {
     /*       x0  x1  x2  x3  x4  x5  x6  x7  x8  x9  xA  xB  xC  xD  xE  xF */
     /* 0x */  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, /* 0x */
@@ -3542,7 +3542,7 @@ BYTE X86_Groups_1[0x100] = // one-byte opcodes
 
 // 19 = Group P
 // 20 = 3DNow
-BYTE X86_Groups_2[0x100] = // two-byte opcodes
+uint8_t X86_Groups_2[0x100] = // two-byte opcodes
 {
     /*       x0  x1  x2  x3  x4  x5  x6  x7  x8  x9  xA  xB  xC  xD  xE  xF */
     /* 0x */  6,  7,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 18,  0, 19, /* 0x */
@@ -3564,7 +3564,7 @@ BYTE X86_Groups_2[0x100] = // two-byte opcodes
 };
 
 // Indicate which 1-byte opcodes are invalid with a 16-bit operand size
-BYTE X86_Invalid_Op16_1[0x100] = 
+uint8_t X86_Invalid_Op16_1[0x100] = 
 {
     /*       x0  x1  x2  x3  x4  x5  x6  x7  x8  x9  xA  xB  xC  xD  xE  xF */
     /* 0x */  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, /* 0x */
@@ -3586,7 +3586,7 @@ BYTE X86_Invalid_Op16_1[0x100] =
 };
 
 // Indicate which 2-byte opcodes are invalid with a 16-bit operand size
-BYTE X86_Invalid_Op16_2[0x100] =
+uint8_t X86_Invalid_Op16_2[0x100] =
 {
     /*       x0  x1  x2  x3  x4  x5  x6  x7  x8  x9  xA  xB  xC  xD  xE  xF */
     /* 0x */  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, /* 0x */
@@ -3608,7 +3608,7 @@ BYTE X86_Invalid_Op16_2[0x100] =
 };
 
 // Indicate which 1-byte opcodes are invalid with a 64-bit address size
-BYTE X86_Invalid_Addr64_1[0x100] =
+uint8_t X86_Invalid_Addr64_1[0x100] =
 {
     /*       x0  x1  x2  x3  x4  x5  x6  x7  x8  x9  xA  xB  xC  xD  xE  xF */
     /* 0x */  0,  0,  0,  0,  0,  0,  1,  1,  0,  0,  0,  0,  0,  0,  1,  0, /* 0x */
@@ -3630,7 +3630,7 @@ BYTE X86_Invalid_Addr64_1[0x100] =
 };
 
 // Indicate which 2-byte opcodes are invalid with a 64-bit address size
-BYTE X86_Invalid_Addr64_2[0x100] =
+uint8_t X86_Invalid_Addr64_2[0x100] =
 {
     /*       x0  x1  x2  x3  x4  x5  x6  x7  x8  x9  xA  xB  xC  xD  xE  xF */
     /* 0x */  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, /* 0x */

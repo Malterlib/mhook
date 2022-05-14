@@ -4,13 +4,11 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+#pragma pack(push,1)
 
-#include <windows.h>
+//#include <windows.h>
 #include "misc.h"
 
-// Windows SDK assumes default alignment.
-#pragma pack(push,1)
-   
 ////////////////////////////////////////////////////////
 // System descriptors
 ////////////////////////////////////////////////////////
@@ -57,220 +55,219 @@ extern "C" {
 
 typedef struct _IDT_ENTRY
 {
-   USHORT LowOffset;
-   USHORT Selector;
-   UCHAR Ignored : 5;
-   UCHAR Zero : 3;
-   UCHAR Type : 3;
-   UCHAR Is32Bit : 1;
-   UCHAR Ignored2 : 1;
-   UCHAR DPL : 2;
-   UCHAR Present : 1;
-   USHORT HighOffset;
+   uint16_t LowOffset;
+   uint16_t Selector;
+   uint8_t Ignored : 5;
+   uint8_t Zero : 3;
+   uint8_t Type : 3;
+   uint8_t Is32Bit : 1;
+   uint8_t Ignored2 : 1;
+   uint8_t DPL : 2;
+   uint8_t Present : 1;
+   uint16_t HighOffset;
 #ifdef _WIN64
-   ULONG HighOffset64;
-   ULONG Reserved;
+   uint32_t HighOffset64;
+   uint32_t Reserved;
 #endif
 } IDT_ENTRY, TRAP_GATE_ENTRY;
 
 typedef struct _CALL_GATE_ENTRY
 {
-   USHORT LowOffset;
-   USHORT Selector;
-   UCHAR ParameterCount: 4;
-   UCHAR Ignored : 3;
-   UCHAR Type : 5;
-   UCHAR DPL : 2;
-   UCHAR Present : 1;
-   USHORT HighOffset;
+   uint16_t LowOffset;
+   uint16_t Selector;
+   uint8_t ParameterCount: 4;
+   uint8_t Ignored : 3;
+   uint8_t Type : 5;
+   uint8_t DPL : 2;
+   uint8_t Present : 1;
+   uint16_t HighOffset;
 #ifdef _WIN64
-   ULONG HighOffset64;
-   ULONG Reserved;
+   uint32_t HighOffset64;
+   uint32_t Reserved;
 #endif
 } CALL_GATE_ENTRY;
 
 typedef struct _TASK_GATE_ENTRY
 {
-   USHORT Ignored;
-   USHORT Selector;
-   UCHAR Ignored2 : 5;
-   UCHAR Zero : 3;
-   UCHAR Type : 5;
-   UCHAR DPL : 2;
-   UCHAR Present : 1;
-   USHORT Ignored3;
+   uint16_t Ignored;
+   uint16_t Selector;
+   uint8_t Ignored2 : 5;
+   uint8_t Zero : 3;
+   uint8_t Type : 5;
+   uint8_t DPL : 2;
+   uint8_t Present : 1;
+   uint16_t Ignored3;
 } TASK_GATE_ENTRY;
 
 typedef struct _DESCRIPTOR_ENTRY
 {
-    USHORT  LimitLow;
-    USHORT  BaseLow;
-    UCHAR   BaseMid;
-    UCHAR   Type : 4;        // 10EWA (code), E=ExpandDown, W=Writable, A=Accessed
+    uint16_t  LimitLow;
+    uint16_t  BaseLow;
+    uint8_t   BaseMid;
+    uint8_t   Type : 4;        // 10EWA (code), E=ExpandDown, W=Writable, A=Accessed
                              // 11CRA (data), C=Conforming, R=Readable, A=Accessed
-    UCHAR   System : 1;      // if 1 then it is a gate or LDT
-    UCHAR   DPL : 2;         // descriptor privilege level; 
+    uint8_t   System : 1;      // if 1 then it is a gate or LDT
+    uint8_t   DPL : 2;         // descriptor privilege level; 
                              // for data selectors, MAX(CPL, RPL) must be <= DPL to access (or else GP# fault)
                              // for non-conforming code selectors (without callgate), MAX(CPL, RPL) must be <= DPL to access (or else GP# fault)
                              // for conforming code selectors, MAX(CPL, RPL) must be >= DPL (i.e., CPL 0-2 cannot access if DPL is 3)
                              // for non-conforming code selectors (with call gate), DPL indicates lowest privilege allowed to access gate
-    UCHAR   Present : 1;
-    UCHAR   LimitHigh : 4;
-    UCHAR   Available: 1;    // aka AVL
-    UCHAR   Reserved : 1;
-    UCHAR   Is32Bit : 1;     // aka B flag
-    UCHAR   Granularity : 1; // aka G flag
-    UCHAR   BaseHi : 8;
+    uint8_t   Present : 1;
+    uint8_t   LimitHigh : 4;
+    uint8_t   Available: 1;    // aka AVL
+    uint8_t   Reserved : 1;
+    uint8_t   Is32Bit : 1;     // aka B flag
+    uint8_t   Granularity : 1; // aka G flag
+    uint8_t   BaseHi : 8;
 #ifdef _WIN64
-   ULONG HighOffset64;
-   ULONG Reserved2;
+   uint32_t HighOffset64;
+   uint32_t Reserved2;
 #endif
 } DESCRIPTOR_ENTRY;
 
 typedef struct _GATE_ENTRY
 {
-   USHORT LowOffset;
-   UCHAR Skip;
-   UCHAR Type : 5;
-   UCHAR DPL : 2;
-   UCHAR Present : 1;
-   USHORT HighOffset;
+   uint16_t LowOffset;
+   uint8_t Skip;
+   uint8_t Type : 5;
+   uint8_t DPL : 2;
+   uint8_t Present : 1;
+   uint16_t HighOffset;
 #ifdef _WIN64
-   ULONG HighOffset64;
-   ULONG Reserved;
+   uint32_t HighOffset64;
+   uint32_t Reserved;
 #endif
 } GATE_ENTRY;
 
 // TODO: update for X64
 typedef struct _PTE_ENTRY
 {
-    ULONG Present : 1;
-    ULONG Write : 1;
-    ULONG Owner : 1; // E.g., user mode or supervisor mode
-    ULONG WriteThrough : 1;
-    ULONG CacheDisable : 1;
-    ULONG Accessed : 1;
-    ULONG Dirty : 1;
-    ULONG PAT : 1;
-    ULONG Global : 1;
-    ULONG CopyOnWrite : 1;
-    ULONG Prototype : 1;
-    ULONG Transition : 1;
-    ULONG Address : 20;
+    uint32_t Present : 1;
+    uint32_t Write : 1;
+    uint32_t Owner : 1; // E.g., user mode or supervisor mode
+    uint32_t WriteThrough : 1;
+    uint32_t CacheDisable : 1;
+    uint32_t Accessed : 1;
+    uint32_t Dirty : 1;
+    uint32_t PAT : 1;
+    uint32_t Global : 1;
+    uint32_t CopyOnWrite : 1;
+    uint32_t Prototype : 1;
+    uint32_t Transition : 1;
+    uint32_t Address : 20;
 } PTE_ENTRY;
 
 // TODO: update for X64
 typedef struct _PDE_ENTRY
 {
-    ULONG Present : 1;
-    ULONG Write : 1;
-    ULONG Owner : 1;
-    ULONG WriteThrough : 1;
-    ULONG CacheDisable : 1;
-    ULONG Accessed : 1;
-    ULONG Reserved1 : 1;
-    ULONG PageSize : 1;
-    ULONG Global : 1;
-    ULONG Reserved : 3;
-    ULONG Address : 20;
+    uint32_t Present : 1;
+    uint32_t Write : 1;
+    uint32_t Owner : 1;
+    uint32_t WriteThrough : 1;
+    uint32_t CacheDisable : 1;
+    uint32_t Accessed : 1;
+    uint32_t Reserved1 : 1;
+    uint32_t PageSize : 1;
+    uint32_t Global : 1;
+    uint32_t Reserved : 3;
+    uint32_t Address : 20;
 } PDE_ENTRY;
 
 // TODO: update for X64
 typedef struct _IO_ACCESS_MAP
 {
-    UCHAR DirectionMap[32];
-    UCHAR IoMap[8196];
+    uint8_t DirectionMap[32];
+    uint8_t IoMap[8196];
 } IO_ACCESS_MAP;
 
 #define MIN_TSS_SIZE FIELD_OFFSET(TSS_ENTRY, IoMaps)
 // TODO: update for X64
 typedef struct _TSS_ENTRY
 {
-    USHORT  Backlink;
-    USHORT  Reserved0;
-    ULONG   Esp0;
-    USHORT  Ss0;
-    USHORT  Reserved1;
-    ULONG   NotUsed1[4];
-    ULONG   CR3;
-    ULONG   Eip;
-    ULONG   NotUsed2[9];
-    USHORT  Es;
-    USHORT  Reserved2;
-    USHORT  Cs;
-    USHORT  Reserved3;
-    USHORT  Ss;
-    USHORT  Reserved4;
-    USHORT  Ds;
-    USHORT  Reserved5;
-    USHORT  Fs;
-    USHORT  Reserved6;
-    USHORT  Gs;
-    USHORT  Reserved7;
-    USHORT  LDT;
-    USHORT  Reserved8;
-    USHORT  Flags;
-    USHORT  IoMapBase;
+    uint16_t  Backlink;
+    uint16_t  Reserved0;
+    uint32_t   Esp0;
+    uint16_t  Ss0;
+    uint16_t  Reserved1;
+    uint32_t   NotUsed1[4];
+    uint32_t   CR3;
+    uint32_t   Eip;
+    uint32_t   NotUsed2[9];
+    uint16_t  Es;
+    uint16_t  Reserved2;
+    uint16_t  Cs;
+    uint16_t  Reserved3;
+    uint16_t  Ss;
+    uint16_t  Reserved4;
+    uint16_t  Ds;
+    uint16_t  Reserved5;
+    uint16_t  Fs;
+    uint16_t  Reserved6;
+    uint16_t  Gs;
+    uint16_t  Reserved7;
+    uint16_t  LDT;
+    uint16_t  Reserved8;
+    uint16_t  Flags;
+    uint16_t  IoMapBase;
     IO_ACCESS_MAP IoMaps[1];
-    UCHAR IntDirectionMap[32];
+    uint8_t IntDirectionMap[32];
 } TSS_ENTRY;
 
 // TODO: update for X64
 typedef struct _TSS16_ENTRY
 {
-    USHORT  Backlink;
-    USHORT  Sp0;
-    USHORT  Ss0;
-    USHORT  Sp1;
-    USHORT  Ss1;
-    USHORT  Sp2;
-    USHORT  Ss3;
-    USHORT  Ip;
-    USHORT  Flags;
-    USHORT  Ax;
-    USHORT  Cx;
-    USHORT  Dx;
-    USHORT  Bx;
-    USHORT  Sp;
-    USHORT  Bp;
-    USHORT  Si;
-    USHORT  Di;
-    USHORT  Es;
-    USHORT  Cs;
-    USHORT  Ss;
-    USHORT  Ds;
-    USHORT  LDT;
+    uint16_t  Backlink;
+    uint16_t  Sp0;
+    uint16_t  Ss0;
+    uint16_t  Sp1;
+    uint16_t  Ss1;
+    uint16_t  Sp2;
+    uint16_t  Ss3;
+    uint16_t  Ip;
+    uint16_t  Flags;
+    uint16_t  Ax;
+    uint16_t  Cx;
+    uint16_t  Dx;
+    uint16_t  Bx;
+    uint16_t  Sp;
+    uint16_t  Bp;
+    uint16_t  Si;
+    uint16_t  Di;
+    uint16_t  Es;
+    uint16_t  Cs;
+    uint16_t  Ss;
+    uint16_t  Ds;
+    uint16_t  LDT;
 } TSS16_ENTRY;
 
 // TODO: update for X64
 typedef struct _GDT_ENTRY
 {
-    USHORT  LimitLow;
-    USHORT  BaseLow;
+    uint16_t  LimitLow;
+    uint16_t  BaseLow;
     union {
         struct {
-            UCHAR   BaseMid;
-            UCHAR   Flags1;
-            UCHAR   Flags2;
-            UCHAR   BaseHi;
+            uint8_t   BaseMid;
+            uint8_t   Flags1;
+            uint8_t   Flags2;
+            uint8_t   BaseHi;
         } Bytes;
         struct {
-            ULONG   BaseMid : 8;
-            ULONG   Type : 5;
-            ULONG   Dpl : 2;
-            ULONG   Pres : 1;
-            ULONG   LimitHi : 4;
-            ULONG   Sys : 1;
-            ULONG   Reserved_0 : 1;
-            ULONG   Default_Big : 1;
-            ULONG   Granularity : 1;
-            ULONG   BaseHi : 8;
+            uint32_t   BaseMid : 8;
+            uint32_t   Type : 5;
+            uint32_t   Dpl : 2;
+            uint32_t   Pres : 1;
+            uint32_t   LimitHi : 4;
+            uint32_t   Sys : 1;
+            uint32_t   Reserved_0 : 1;
+            uint32_t   Default_Big : 1;
+            uint32_t   Granularity : 1;
+            uint32_t   BaseHi : 8;
         } Bits;
     } HighWord;
 } GDT_ENTRY;
 
-BYTE *GetAbsoluteAddressFromSegment(BYTE Segment, DWORD Offset);
-BYTE *GetAbsoluteAddressFromSelector(WORD Selector, DWORD Offset);
+uint8_t *GetAbsoluteAddressFromSegment(uint8_t Segment, uint32_t Offset);
 
 #pragma pack(pop)
 #ifdef __cplusplus

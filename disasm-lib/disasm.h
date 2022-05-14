@@ -12,18 +12,18 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-#include <windows.h>
+//#include <windows.h>
 #include <stdio.h>
 #include "misc.h"
 
-typedef signed char S8;
-typedef unsigned char U8;
-typedef signed short S16;
-typedef unsigned short U16;
-typedef signed long S32;
-typedef unsigned long U32;
-typedef LONG64 S64;
-typedef ULONG64 U64;
+typedef int8_t S8;
+typedef uint8_t U8;
+typedef int16_t S16;
+typedef uint16_t U16;
+typedef int32_t S32;
+typedef uint32_t U32;
+typedef int64_t S64;
+typedef uint64_t U64;
 
 #ifdef SPEEDY
 // On Visual Studio 6, making the internal functions inline makes compiling take forever
@@ -212,21 +212,21 @@ typedef enum _INSTRUCTION_TYPE
     // SF = sign flag
     ITYPE_FLAG=ITYPE_FLAG_OFFSET,
         // clear
-        ITYPE_CLEARCF, 
+        ITYPE_CLEARCF,
         ITYPE_CLEARZF,
         ITYPE_CLEAROF,
         ITYPE_CLEARDF,
         ITYPE_CLEARSF,
         ITYPE_CLEARPF,
         // set
-        ITYPE_SETCF, 
+        ITYPE_SETCF,
         ITYPE_SETZF,
         ITYPE_SETOF,
         ITYPE_SETDF,
         ITYPE_SETSF,
         ITYPE_SETPF,
         // toggle
-        ITYPE_TOGCF, 
+        ITYPE_TOGCF,
         ITYPE_TOGZF,
         ITYPE_TOGOF,
         ITYPE_TOGDF,
@@ -276,7 +276,7 @@ typedef enum _INSTRUCTION_TYPE
         ITYPE_SSE_OR,
         ITYPE_SSE_XOR,
         ITYPE_SSE_CMP,
-        
+
         // ITYPE_SSE2 group
     ITYPE_SSE2=ITYPE_SSE2_OFFSET,
         ITYPE_SSE2_MOV,
@@ -311,7 +311,7 @@ typedef enum _INSTRUCTION_TYPE
         ITYPE_3DNOW_XCHG,
 
     // ITYPE_TRAP
-    ITYPE_TRAPS=ITYPE_TRAPS_OFFSET, 
+    ITYPE_TRAPS=ITYPE_TRAPS_OFFSET,
         ITYPE_TRAP, // generate trap
         ITYPE_TRAPCC,  // conditional trap gen
         ITYPE_TRAPRET,    // return from trap
@@ -398,12 +398,12 @@ typedef enum _INSTRUCTION_TYPE
 typedef enum _ARCHITECTURE_TYPE
 {
     ARCH_UNKNOWN=0,
-    
+
     // x86-based
     ARCH_X86,    // 32-bit x86
     ARCH_X86_16, // 16-bit x86
     ARCH_X64,    // AMD64 and Intel EMD64
-    
+
     // everything else
     ARCH_ALPHA,
     ARCH_ARM,
@@ -422,9 +422,9 @@ typedef enum _ARCHITECTURE_TYPE
 
 struct _INSTRUCTION;
 
-typedef BOOL (*INIT_INSTRUCTION)(struct _INSTRUCTION *Instruction);
-typedef void (*DUMP_INSTRUCTION)(struct _INSTRUCTION *Instruction, BOOL ShowBytes, BOOL Verbose);
-typedef BOOL (*GET_INSTRUCTION)(struct _INSTRUCTION *Instruction, U8 *Address, U32 Flags);
+typedef bool (*INIT_INSTRUCTION)(struct _INSTRUCTION *Instruction);
+typedef void (*DUMP_INSTRUCTION)(struct _INSTRUCTION *Instruction, bool ShowBytes, bool Verbose);
+typedef bool (*GET_INSTRUCTION)(struct _INSTRUCTION *Instruction, U8 *Address, U32 Flags);
 typedef U8 *(*FIND_FUNCTION_BY_PROLOGUE)(struct _INSTRUCTION *Instruction, U8 *StartAddress, U8 *EndAddress, U32 Flags);
 
 typedef struct _ARCHITECTURE_FORMAT_FUNCTIONS
@@ -463,17 +463,17 @@ typedef struct _INSTRUCTION_OPERAND
     U8 Type : 6;
     U8 Unused : 2;
     U16 Length;
-    
+
 
     // If non-NULL, this indicates the target address of the instruction (e.g., a branch or
     // a displacement with no base register). However, this address is only reliable if the
     // image is mapped correctly (e.g., the executable is mapped as an image and fixups have
     // been applied if it is not at its preferred image base).
     //
-    // If disassembling a 16-bit DOS application, TargetAddress is in the context of 
-    // X86Instruction->Segment. For example, if TargetAddress is the address of a code branch, 
-    // it is in the CS segment (unless X86Instruction->HasSegmentOverridePrefix is set). If 
-    // TargetAddress is a data pointer, it is in the DS segment (unless 
+    // If disassembling a 16-bit DOS application, TargetAddress is in the context of
+    // X86Instruction->Segment. For example, if TargetAddress is the address of a code branch,
+    // it is in the CS segment (unless X86Instruction->HasSegmentOverridePrefix is set). If
+    // TargetAddress is a data pointer, it is in the DS segment (unless
     // X86Instruction->HasSegmentOverridePrefix is set)
     U64 TargetAddress;
     U32 Register;
@@ -535,7 +535,7 @@ typedef struct _INSTRUCTION
     //
     // If Groups & ITYPE_STACK is set but StackChange = 0, it means that the change
     // couldn't be determined (non-constant)
-    LONG StackChange;
+    int32_t StackChange;
 
     // Used to assist in debugging
     // If set, the current instruction is doing something that requires special handling
@@ -570,7 +570,7 @@ typedef struct _DISASSEMBLER
 #define DISASM_ALIGNOUTPUT         (1<<5)
 #define DISASM_DISASSEMBLE_MASK (DISASM_ALIGNOUTPUT|DISASM_SHOWBYTES|DISASM_DISASSEMBLE)
 
-BOOL InitDisassembler(DISASSEMBLER *Disassembler, ARCHITECTURE_TYPE Architecture);
+bool InitDisassembler(DISASSEMBLER *Disassembler, ARCHITECTURE_TYPE Architecture);
 void CloseDisassembler(DISASSEMBLER *Disassembler);
 INSTRUCTION *GetInstruction(DISASSEMBLER *Disassembler, U64 VirtualAddress, U8 *Address, U32 Flags);
 

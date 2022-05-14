@@ -1,4 +1,5 @@
 // Copyright (C) 2004, Matt Conover (mconover@gmail.com)
+
 #ifndef X86_DISASM_H
 #define X86_DISASM_H
 #ifdef __cplusplus
@@ -161,7 +162,7 @@ typedef enum _CPU_TYPE
     CPU_PENTIUM, // superscalar architecture
     // 1997
     //CPU_PENTIUM_MMX
-    
+
     ///////////////////////////////////////
     // 6th generation (1995)
     ///////////////////////////////////////
@@ -756,7 +757,7 @@ typedef struct _X86_INSTRUCTION
     union
     {
         X86_SEGMENT Segment;
-        DWORD Selector;
+        uint32_t Selector;
     };
 
     // NOTE: these are for internal use, use Instruction->Operands[]
@@ -779,7 +780,7 @@ typedef struct _X86_INSTRUCTION
     // If both are false, then SrcReg and DstReg are not addresses
     X86_REGISTER BaseRegister;
     X86_REGISTER IndexRegister;
-    
+
     U8 Scale;
     U8 HasDefault64Operand : 1;
     U8 HasOperandSizePrefix : 1;
@@ -791,7 +792,7 @@ typedef struct _X86_INSTRUCTION
     U8 HasBranchTakenPrefix : 1;
     U8 HasBranchNotTakenPrefix : 1;
     U8 HasDstAddressing : 1;
-    U8 HasSrcAddressing : 1; 
+    U8 HasSrcAddressing : 1;
     U8 HasModRM : 1;
     U8 HasBaseRegister : 1;
     U8 HasIndexRegister : 1;

@@ -3,6 +3,12 @@
 #include <assert.h>
 #include "disasm.h"
 #include "cpu.h"
+#include <string.h>
+
+#ifndef DPlatformFamily_Windows
+#pragma GCC diagnostic ignored "-Wformat-security"
+#endif
+
 
 // Since addresses are internally represented as 64-bit, we need to specially handle
 // cases where IP + Displacement wraps around for 16-bit/32-bit operand size
@@ -57,7 +63,7 @@
 #define X86_POP_REG 0x58
 
 #define OPCSTR Instruction->String+Instruction->StringIndex
-#define APPEND Instruction->StringIndex += (U8)_snprintf
+#define APPEND Instruction->StringIndex += (U8)snprintf
 #define APPENDPAD(x) \
 { \
     if (Instruction->StringAligned) \
@@ -83,9 +89,9 @@
 { \
     if (!Instruction->AnomalyOccurred && X86Instruction->HasOperandSizePrefix) \
     { \
-        if (!SuppressErrors) printf("[0x%08I64X] ANOMALY: Unexpected operand size prefix\n", VIRTUAL_ADDRESS); \
-        Instruction->AnomalyOccurred = TRUE; \
-        X86Instruction->HasOperandSizePrefix = FALSE; \
+        if (!SuppressErrors) printf("[0x%08llX] ANOMALY: Unexpected operand size prefix\n", VIRTUAL_ADDRESS); \
+        Instruction->AnomalyOccurred = true; \
+        X86Instruction->HasOperandSizePrefix = false; \
         switch (X86Instruction->OperandSize) \
         { \
             case 4: X86Instruction->OperandSize = 2; break; \
@@ -99,10 +105,10 @@
 { \
     if (!Instruction->AnomalyOccurred && X86Instruction->HasAddressSizePrefix) \
     { \
-        if (!SuppressErrors) printf("[0x%08I64X] ANOMALY: Unexpected address size prefix\n", VIRTUAL_ADDRESS); \
-        Instruction->AnomalyOccurred = TRUE; \
+        if (!SuppressErrors) printf("[0x%08llX] ANOMALY: Unexpected address size prefix\n", VIRTUAL_ADDRESS); \
+        Instruction->AnomalyOccurred = true; \
     } \
-    X86Instruction->HasAddressSizePrefix = FALSE; \
+    X86Instruction->HasAddressSizePrefix = false; \
     switch (INS_ARCH_TYPE(Instruction)) \
     { \
         case ARCH_X64: X86Instruction->AddressSize = 8; break; \
@@ -114,8 +120,8 @@
 #define SANITY_CHECK_SEGMENT_OVERRIDE() \
     if (!Instruction->AnomalyOccurred && X86Instruction->HasSegmentOverridePrefix) \
     { \
-        if (!SuppressErrors) printf("[0x%08I64X] ANOMALY: Unexpected segment override\n", VIRTUAL_ADDRESS); \
-        Instruction->AnomalyOccurred = TRUE; \
+        if (!SuppressErrors) printf("[0x%08llX] ANOMALY: Unexpected segment override\n", VIRTUAL_ADDRESS); \
+        Instruction->AnomalyOccurred = true; \
     }
 
 #define INSTR_INC(size) \
@@ -130,8 +136,8 @@
     { \
         if (!Instruction->AnomalyOccurred) \
         { \
-            if (!SuppressErrors) printf("[0x%08I64X] ANOMALY: unexpected segment 0x%02X\n", VIRTUAL_ADDRESS, X86Instruction->Selector); \
-            Instruction->AnomalyOccurred = TRUE; \
+            if (!SuppressErrors) printf("[0x%08llX] ANOMALY: unexpected segment 0x%02X\n", VIRTUAL_ADDRESS, X86Instruction->Selector); \
+            Instruction->AnomalyOccurred = true; \
         } \
     } \
     else \
@@ -144,12 +150,12 @@
             case SEG_ES: \
                 assert(!X86Instruction->HasSelector); \
                 Operand->TargetAddress = (U64)X86Instruction->Displacement; \
-                /* assert(!GetAbsoluteAddressFromSegment((BYTE)X86Instruction->Segment, (DWORD)X86Instruction->Displacement) || GetAbsoluteAddressFromSegment(X86Instruction->Segment, (DWORD)X86Instruction->Displacement) == Operand->TargetAddress); */ \
+                /* assert(!GetAbsoluteAddressFromSegment((uint8_t)X86Instruction->Segment, (uint32_t)X86Instruction->Displacement) || GetAbsoluteAddressFromSegment(X86Instruction->Segment, (uint32_t)X86Instruction->Displacement) == Operand->TargetAddress); */ \
                 break; \
             case SEG_FS: \
             case SEG_GS: \
                 assert(!X86Instruction->HasSelector); \
-                Operand->TargetAddress = (U64)GetAbsoluteAddressFromSegment((BYTE)X86Instruction->Segment, (DWORD)X86Instruction->Displacement); \
+                Operand->TargetAddress = (U64)GetAbsoluteAddressFromSegment((uint8_t)X86Instruction->Segment, (uint32_t)X86Instruction->Displacement); \
                 break; \
             default: \
                 assert(0); /* shouldn't be possible */ \
@@ -172,7 +178,7 @@
     if (Operand->Flags & OP_DST) \
     { \
         assert(!X86Instruction->HasDstAddressing); \
-        X86Instruction->HasDstAddressing = TRUE; \
+        X86Instruction->HasDstAddressing = true; \
         X86Instruction->DstOpIndex[X86Instruction->DstOpCount] = (U8)OperandIndex; \
         X86Instruction->DstOpCount++; \
         X86Instruction->DstAddressIndex = (U8)OperandIndex; \
@@ -180,7 +186,7 @@
     if (Operand->Flags & OP_SRC) \
     { \
         if (Instruction->Type != ITYPE_STRCMP) assert(!X86Instruction->HasSrcAddressing); \
-        X86Instruction->HasSrcAddressing = TRUE; \
+        X86Instruction->HasSrcAddressing = true; \
         X86Instruction->SrcOpIndex[X86Instruction->SrcOpCount] = (U8)OperandIndex; \
         X86Instruction->SrcOpCount++; \
         X86Instruction->SrcAddressIndex = (U8)OperandIndex; \
@@ -211,10 +217,10 @@
 
 ARCHITECTURE_FORMAT_FUNCTIONS X86 = 
 {
-    X86_InitInstruction, 
+    X86_InitInstruction,
     NULL,
     X86_GetInstruction,
-    X86_FindFunctionByPrologue 
+    X86_FindFunctionByPrologue
 };
 
 char *X86_Registers[0xE0] = 
@@ -311,7 +317,7 @@ char *X86_Registers[0xE0] =
 
     // MMX
     "mm0", // 0x50
-    "mm1", // 
+    "mm1", //
     "mm2",
     "mm3",
     "mm4",
@@ -417,7 +423,7 @@ char *X86_Registers[0xE0] =
     "r14b", // 0xAE
     "r15b", // 0xAF
 
-    // X86-64 16-bit register   
+    // X86-64 16-bit register
     "ax", // 0xB0
     "cx", // 0xB1
     "dx", // 0xB2
@@ -453,7 +459,7 @@ char *X86_Registers[0xE0] =
     "r14d", // 0xCE
     "r15d", // 0xCF
 
-    // X86-64 64-bit register   
+    // X86-64 64-bit register
     "rax", // 0xD0
     "rcx", // 0xD1
     "rdx", // 0xD2
@@ -551,11 +557,11 @@ OUTPUT_OPTYPE OptypeHandlers[] =
 U32 X86_GetLength(INSTRUCTION *Instruction, U8 *Address);
 #endif
 
-INTERNAL BOOL IsValidLockPrefix(X86_INSTRUCTION *Instruction, U8 Opcode, U32 OpcodeLength, U8 Group, U8 OpcodeExtension);
+INTERNAL bool IsValidLockPrefix(X86_INSTRUCTION *Instruction, U8 Opcode, U32 OpcodeLength, U8 Group, U8 OpcodeExtension);
 INTERNAL U8 *SetOperands(INSTRUCTION *Instruction, U8 *Address, U32 Flags);
-INTERNAL U8 *SetModRM32(INSTRUCTION *Instruction, U8 *Address, INSTRUCTION_OPERAND *Operand, U32 OperandIndex, BOOL SuppressErrors);
-INTERNAL U8 *SetModRM16(INSTRUCTION *Instruction, U8 *Address, INSTRUCTION_OPERAND *Operand, U32 OperandIndex, BOOL SuppressErrors);
-INTERNAL U8 *SetSIB(INSTRUCTION *Instruction, U8 *Address, INSTRUCTION_OPERAND *Operand, U32 OperandIndex, BOOL SuppressErrors);
+INTERNAL U8 *SetModRM32(INSTRUCTION *Instruction, U8 *Address, INSTRUCTION_OPERAND *Operand, U32 OperandIndex, bool SuppressErrors);
+INTERNAL U8 *SetModRM16(INSTRUCTION *Instruction, U8 *Address, INSTRUCTION_OPERAND *Operand, U32 OperandIndex, bool SuppressErrors);
+INTERNAL U8 *SetSIB(INSTRUCTION *Instruction, U8 *Address, INSTRUCTION_OPERAND *Operand, U32 OperandIndex, bool SuppressErrors);
 INTERNAL U64 ApplyDisplacement(U64 Address, INSTRUCTION *Instruction);
 
 //////////////////////////////////////////////////////////
@@ -573,7 +579,7 @@ INTERNAL U64 ApplyDisplacement(U64 Address, INSTRUCTION *Instruction);
     } \
 }
 
-BOOL X86_InitInstruction(INSTRUCTION *Instruction)
+bool X86_InitInstruction(INSTRUCTION *Instruction)
 {
     X86_INSTRUCTION *X86Instruction;
 #ifdef NO_SANITY_CHECKS
@@ -581,7 +587,7 @@ BOOL X86_InitInstruction(INSTRUCTION *Instruction)
 #endif
     X86Instruction = &Instruction->X86;
     memset(X86Instruction, 0, sizeof(X86_INSTRUCTION));
-    
+
     switch (INS_ARCH_TYPE(Instruction))
     {
         case ARCH_X64:
@@ -598,11 +604,11 @@ BOOL X86_InitInstruction(INSTRUCTION *Instruction)
             break;
         default:
             assert(0);
-            return FALSE;
+            return false;
     }
     X86Instruction->Instruction = Instruction;
     X86Instruction->Segment = SEG_DS;
-    return TRUE;
+    return true;
 }
 
 ////////////////////////////////////////////////////////////
@@ -635,16 +641,16 @@ BOOL X86_InitInstruction(INSTRUCTION *Instruction)
     switch (Operand->Length) \
     { \
         case 8: \
-            APPEND(OPCSTR, SIZE_LEFT, "0x%02I64X=", Operand->Value_U64); \
-            if (Operand->Value_S64 >= 0 || !(Operand->Flags & OP_SIGNED)) APPEND(OPCSTR, SIZE_LEFT, "%I64u", Operand->Value_U64); \
-            /*else APPEND(OPCSTR, SIZE_LEFT, "-0x%02I64X=%I64d", -Operand->Value_S64, Operand->Value_S64);*/ \
-            else APPEND(OPCSTR, SIZE_LEFT, "%I64d", Operand->Value_S64); \
+            APPEND(OPCSTR, SIZE_LEFT, "0x%02llX=", Operand->Value_U64); \
+            if (Operand->Value_S64 >= 0 || !(Operand->Flags & OP_SIGNED)) APPEND(OPCSTR, SIZE_LEFT, "%llu", Operand->Value_U64); \
+            /*else APPEND(OPCSTR, SIZE_LEFT, "-0x%02llX=%I64d", -Operand->Value_S64, Operand->Value_S64);*/ \
+            else APPEND(OPCSTR, SIZE_LEFT, "%lld", Operand->Value_S64); \
             break; \
         case 4: \
-            APPEND(OPCSTR, SIZE_LEFT, "0x%02lX=", (U32)Operand->Value_U64); \
-            if (Operand->Value_S64 >= 0 || !(Operand->Flags & OP_SIGNED)) APPEND(OPCSTR, SIZE_LEFT, "%lu", (U32)Operand->Value_U64); \
-            /*else APPEND(OPCSTR, SIZE_LEFT, "-0x%02lX=%ld", (U32)-Operand->Value_S64, (S32)Operand->Value_S64);*/ \
-            else APPEND(OPCSTR, SIZE_LEFT, "%ld", (S32)Operand->Value_S64); \
+            APPEND(OPCSTR, SIZE_LEFT, "0x%02X=", (U32)Operand->Value_U64); \
+            if (Operand->Value_S64 >= 0 || !(Operand->Flags & OP_SIGNED)) APPEND(OPCSTR, SIZE_LEFT, "%u", (U32)Operand->Value_U64); \
+            /*else APPEND(OPCSTR, SIZE_LEFT, "-0x%02X=%ld", (U32)-Operand->Value_S64, (S32)Operand->Value_S64);*/ \
+            else APPEND(OPCSTR, SIZE_LEFT, "%d", (S32)Operand->Value_S64); \
             break; \
         case 2: \
             APPEND(OPCSTR, SIZE_LEFT, "0x%02X=", (U16)Operand->Value_U64); \
@@ -667,10 +673,10 @@ BOOL X86_InitInstruction(INSTRUCTION *Instruction)
     switch (X86Instruction->AddressSize) \
     { \
         case 8: \
-            APPEND(OPCSTR, SIZE_LEFT, "0x%04I64X", X86Instruction->Displacement); \
+            APPEND(OPCSTR, SIZE_LEFT, "0x%04llX", X86Instruction->Displacement); \
             break; \
         case 4: \
-            APPEND(OPCSTR, SIZE_LEFT, "0x%04lX", (U32)X86Instruction->Displacement); \
+            APPEND(OPCSTR, SIZE_LEFT, "0x%04X", (U32)X86Instruction->Displacement); \
             break; \
         case 2: \
             APPEND(OPCSTR, SIZE_LEFT, "0x%04X", (U16)X86Instruction->Displacement); \
@@ -680,12 +686,12 @@ BOOL X86_InitInstruction(INSTRUCTION *Instruction)
 }
 
 #define X86_WRITE_RELATIVE_DISPLACEMENT64() \
-    if (X86Instruction->Displacement >= 0) APPEND(OPCSTR, SIZE_LEFT, "+0x%02I64X", X86Instruction->Displacement); \
-    else APPEND(OPCSTR, SIZE_LEFT, "-0x%02I64X", -X86Instruction->Displacement);
+    if (X86Instruction->Displacement >= 0) APPEND(OPCSTR, SIZE_LEFT, "+0x%02llX", X86Instruction->Displacement); \
+    else APPEND(OPCSTR, SIZE_LEFT, "-0x%02llX", -X86Instruction->Displacement);
 
 #define X86_WRITE_RELATIVE_DISPLACEMENT32() \
-    if (X86Instruction->Displacement >= 0) APPEND(OPCSTR, SIZE_LEFT, "+0x%02lX", (U32)X86Instruction->Displacement); \
-    else APPEND(OPCSTR, SIZE_LEFT, "-0x%02lX", (U32)-X86Instruction->Displacement);
+    if (X86Instruction->Displacement >= 0) APPEND(OPCSTR, SIZE_LEFT, "+0x%02X", (U32)X86Instruction->Displacement); \
+    else APPEND(OPCSTR, SIZE_LEFT, "-0x%02X", (U32)-X86Instruction->Displacement);
 
 #define X86_WRITE_RELATIVE_DISPLACEMENT16() \
     if (X86Instruction->Displacement >= 0) APPEND(OPCSTR, SIZE_LEFT, "+0x%02X", (U16)X86Instruction->Displacement); \
@@ -716,13 +722,13 @@ BOOL X86_InitInstruction(INSTRUCTION *Instruction)
             APPENDS("[rip+ilen"); \
             assert((op)->TargetAddress); \
             X86_WRITE_RELATIVE_DISPLACEMENT64() \
-            APPEND(OPCSTR, SIZE_LEFT, "]=0x%04I64X", (op)->TargetAddress+Instruction->VirtualAddressDelta); \
+            APPEND(OPCSTR, SIZE_LEFT, "]=0x%04llX", (op)->TargetAddress+Instruction->VirtualAddressDelta); \
             break; \
         case 4: \
             APPENDS("[eip+ilen"); \
             assert((op)->TargetAddress); \
             X86_WRITE_RELATIVE_DISPLACEMENT32() \
-            APPEND(OPCSTR, SIZE_LEFT, "]=0x%04lX", (U32)((op)->TargetAddress+Instruction->VirtualAddressDelta)); \
+            APPEND(OPCSTR, SIZE_LEFT, "]=0x%04X", (U32)((op)->TargetAddress+Instruction->VirtualAddressDelta)); \
             break; \
         case 2: \
             APPENDS("[ip+ilen"); \
@@ -753,7 +759,7 @@ BOOL X86_InitInstruction(INSTRUCTION *Instruction)
 
 void OutputAddress(INSTRUCTION *Instruction, INSTRUCTION_OPERAND *Operand, U32 OperandIndex)
 {
-    BOOL ShowDisplacement = FALSE;
+    bool ShowDisplacement = false;
     X86_INSTRUCTION *X86Instruction = &Instruction->X86;
 
     assert(!X86Instruction->HasSelector);
@@ -772,7 +778,7 @@ void OutputAddress(INSTRUCTION *Instruction, INSTRUCTION_OPERAND *Operand, U32 O
         if (X86Instruction->Displacement)
         {
             if (X86Instruction->HasFullDisplacement) X86_WRITE_ABSOLUTE_DISPLACEMENT()
-            else ShowDisplacement = TRUE;
+            else ShowDisplacement = true;
         }
         APPEND(OPCSTR, SIZE_LEFT, "[%s", X86_Registers[X86Instruction->BaseRegister]);
         if (X86Instruction->HasIndexRegister)
@@ -787,7 +793,7 @@ void OutputAddress(INSTRUCTION *Instruction, INSTRUCTION_OPERAND *Operand, U32 O
             U64 Address = Operand->TargetAddress;
             assert(Address);
             APPLY_OFFSET(Address)
-            APPEND(OPCSTR, SIZE_LEFT, "=[0x%04I64X]", Address);
+            APPEND(OPCSTR, SIZE_LEFT, "=[0x%04llX]", Address);
         }
     }
     else if (X86Instruction->HasIndexRegister)
@@ -795,7 +801,7 @@ void OutputAddress(INSTRUCTION *Instruction, INSTRUCTION_OPERAND *Operand, U32 O
         if (X86Instruction->Displacement)
         {
             if (X86Instruction->HasFullDisplacement) X86_WRITE_ABSOLUTE_DISPLACEMENT()
-            else ShowDisplacement = TRUE;
+            else ShowDisplacement = true;
         }
         APPEND(OPCSTR, SIZE_LEFT, "[%s", X86_Registers[X86Instruction->IndexRegister]);
         if (X86Instruction->Scale > 1) APPEND(OPCSTR, SIZE_LEFT, "*%d", X86Instruction->Scale);
@@ -926,7 +932,7 @@ void OutputSegOffset(INSTRUCTION *Instruction, INSTRUCTION_OPERAND *Operand, U32
 {
     X86_INSTRUCTION *X86Instruction = &Instruction->X86;
     assert(X86Instruction->HasSrcAddressing);
-    OutputAddress(Instruction, Operand, OperandIndex);  
+    OutputAddress(Instruction, Operand, OperandIndex);
 }
 
 ////////////////////////////////////////////////////////////
@@ -965,9 +971,9 @@ U8 *X86_FindFunctionByPrologue(INSTRUCTION *Instruction, U8 *StartAddress, U8 *E
 // Instruction decoder
 //////////////////////////////////////////////////////////
 
-BOOL X86_GetInstruction(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
+bool X86_GetInstruction(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
 {
-    BOOL SpecialExtension = FALSE;
+    bool SpecialExtension = false;
     U8 Opcode = 0, OpcodeExtension = 0, Group = 0, SSE_Prefix = 0, Suffix;
     U32 i = 0, Result = 0, tmpScale;
     X86_INSTRUCTION *X86Instruction = &Instruction->X86;
@@ -977,18 +983,18 @@ BOOL X86_GetInstruction(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
 #endif
     INSTRUCTION_OPERAND *Operand, *Operand1 = NULL;
     DISASSEMBLER *Disassembler = Instruction->Disassembler;
-    BOOL Decode = Flags & DISASM_DECODE;
-    BOOL Disassemble = Flags & DISASM_DISASSEMBLE;
+    bool Decode = Flags & DISASM_DECODE;
+    bool Disassemble = Flags & DISASM_DISASSEMBLE;
 #if _DEBUG
-    BOOL SuppressErrors = Flags & DISASM_SUPPRESSERRORS;
+    bool SuppressErrors = Flags & DISASM_SUPPRESSERRORS;
 #else
-    BOOL SuppressErrors = TRUE;
+    bool SuppressErrors = true;
 #endif
 
     if (Disassemble && !Decode)
     {
         assert(0);
-        Decode = TRUE;
+        Decode = true;
     }
 
     if (!Address || !X86_InitInstruction(Instruction))
@@ -1001,12 +1007,12 @@ BOOL X86_GetInstruction(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
     assert(!Instruction->StringIndex && !Instruction->Length);
 
     Disassembler->Stage1Count++;
-    if (Flags & DISASM_ALIGNOUTPUT) Instruction->StringAligned = TRUE;
+    if (Flags & DISASM_ALIGNOUTPUT) Instruction->StringAligned = true;
 
     //
     // Get prefixes or three byte opcode
     //
-    while (TRUE)
+    while (true)
     {
         Opcode = *Address;
         INSTR_INC(1); // increment Instruction->Length and address
@@ -1017,12 +1023,12 @@ BOOL X86_GetInstruction(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
         {
             if (!Instruction->AnomalyOccurred)
             {
-                if (!SuppressErrors) printf("[0x%08I64X] ANOMALY: REX prefix before legacy prefix 0x%02X\n", VIRTUAL_ADDRESS, Opcode);
-                Instruction->AnomalyOccurred = TRUE;
+                if (!SuppressErrors) printf("[0x%08llX] ANOMALY: REX prefix before legacy prefix 0x%02X\n", VIRTUAL_ADDRESS, Opcode);
+                Instruction->AnomalyOccurred = true;
             }
             continue;
         }
-        
+
         if (X86_PREFIX(X86Opcode))
         {
             if (!Instruction->AnomalyOccurred)
@@ -1031,8 +1037,8 @@ BOOL X86_GetInstruction(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
                 {
                     if (Instruction->Prefixes[i] == Opcode)
                     {
-                        if (!SuppressErrors) printf("[0x%08I64X] ANOMALY: Duplicate prefix 0x%02X\n", VIRTUAL_ADDRESS, Opcode);
-                        Instruction->AnomalyOccurred = TRUE;
+                        if (!SuppressErrors) printf("[0x%08llX] ANOMALY: Duplicate prefix 0x%02X\n", VIRTUAL_ADDRESS, Opcode);
+                        Instruction->AnomalyOccurred = true;
                         break;
                     }
                 }
@@ -1044,36 +1050,36 @@ BOOL X86_GetInstruction(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
                     SSE_Prefix = Opcode;
                     if (!Instruction->AnomalyOccurred && X86Instruction->HasRepeatWhileEqualPrefix)
                     {
-                        if (!SuppressErrors) printf("[0x%08I64X] ANOMALY: Conflicting prefix\n", VIRTUAL_ADDRESS);
-                        Instruction->AnomalyOccurred = TRUE;
+                        if (!SuppressErrors) printf("[0x%08llX] ANOMALY: Conflicting prefix\n", VIRTUAL_ADDRESS);
+                        Instruction->AnomalyOccurred = true;
                     }
-                    Instruction->Repeat = TRUE;
-                    X86Instruction->HasRepeatWhileEqualPrefix = FALSE;
-                    X86Instruction->HasRepeatWhileNotEqualPrefix = TRUE;
+                    Instruction->Repeat = true;
+                    X86Instruction->HasRepeatWhileEqualPrefix = false;
+                    X86Instruction->HasRepeatWhileNotEqualPrefix = true;
                     break;
                 case PREFIX_REP: // may be three byte opcode
                     SSE_Prefix = Opcode;
                     if (!Instruction->AnomalyOccurred && X86Instruction->HasRepeatWhileNotEqualPrefix)
                     {
-                        if (!SuppressErrors) printf("[0x%08I64X] ANOMALY: Conflicting prefix\n", VIRTUAL_ADDRESS);
-                        Instruction->AnomalyOccurred = TRUE;
+                        if (!SuppressErrors) printf("[0x%08llX] ANOMALY: Conflicting prefix\n", VIRTUAL_ADDRESS);
+                        Instruction->AnomalyOccurred = true;
                     }
 
-                    Instruction->Repeat = TRUE;
-                    X86Instruction->HasRepeatWhileNotEqualPrefix = FALSE;
-                    X86Instruction->HasRepeatWhileEqualPrefix = TRUE;
+                    Instruction->Repeat = true;
+                    X86Instruction->HasRepeatWhileNotEqualPrefix = false;
+                    X86Instruction->HasRepeatWhileEqualPrefix = true;
                     break;
 
                 case PREFIX_OPERAND_SIZE: // may be three byte opcode
                     SSE_Prefix = Opcode;
                     if (!Instruction->AnomalyOccurred && X86Instruction->HasOperandSizePrefix)
                     {
-                        if (!SuppressErrors) printf("[0x%08I64X] ANOMALY: Conflicting prefix\n", VIRTUAL_ADDRESS);
-                        Instruction->AnomalyOccurred = TRUE;
+                        if (!SuppressErrors) printf("[0x%08llX] ANOMALY: Conflicting prefix\n", VIRTUAL_ADDRESS);
+                        Instruction->AnomalyOccurred = true;
                     }
-                    
+
                     if (X86Instruction->HasOperandSizePrefix) break;
-                    else X86Instruction->HasOperandSizePrefix = TRUE;
+                    else X86Instruction->HasOperandSizePrefix = true;
                     switch (X86Instruction->OperandSize)
                     {
                         case 4: X86Instruction->OperandSize = 2; break;
@@ -1085,12 +1091,12 @@ BOOL X86_GetInstruction(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
                 case PREFIX_ADDRESS_SIZE:
                     if (!Instruction->AnomalyOccurred && X86Instruction->HasAddressSizePrefix)
                     {
-                        if (!SuppressErrors) printf("[0x%08I64X] ANOMALY: Conflicting prefix\n", VIRTUAL_ADDRESS);
-                        Instruction->AnomalyOccurred = TRUE;
+                        if (!SuppressErrors) printf("[0x%08llX] ANOMALY: Conflicting prefix\n", VIRTUAL_ADDRESS);
+                        Instruction->AnomalyOccurred = true;
                     }
 
                     if (X86Instruction->HasAddressSizePrefix) break;
-                    else X86Instruction->HasAddressSizePrefix = TRUE;
+                    else X86Instruction->HasAddressSizePrefix = true;
                     switch (X86Instruction->AddressSize)
                     {
                         case 8:
@@ -1103,7 +1109,7 @@ BOOL X86_GetInstruction(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
                         case 2:
                             X86Instruction->AddressSize = 4;
                             break;
-                        default: 
+                        default:
                             assert(0); goto abort;
                     }
                     break;
@@ -1112,72 +1118,72 @@ BOOL X86_GetInstruction(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
                     SANITY_CHECK_SEGMENT_OVERRIDE();
                     if (!IS_AMD64())
                     {
-                        X86Instruction->HasSegmentOverridePrefix = TRUE;
+                        X86Instruction->HasSegmentOverridePrefix = true;
                         X86Instruction->Segment = SEG_ES;
                     }
                     else if (!Instruction->AnomalyOccurred)
                     {
-                        if (!SuppressErrors) printf("[0x%08I64X] ANOMALY: Meaningless segment override\n", VIRTUAL_ADDRESS);
-                        Instruction->AnomalyOccurred = TRUE;
+                        if (!SuppressErrors) printf("[0x%08llX] ANOMALY: Meaningless segment override\n", VIRTUAL_ADDRESS);
+                        Instruction->AnomalyOccurred = true;
                     }
                     break;
                 case PREFIX_SEGMENT_OVERRIDE_CS:
                     SANITY_CHECK_SEGMENT_OVERRIDE();
                     if (!IS_AMD64())
                     {
-                        X86Instruction->HasSegmentOverridePrefix = TRUE;
-                        X86Instruction->Segment = SEG_CS;  
+                        X86Instruction->HasSegmentOverridePrefix = true;
+                        X86Instruction->Segment = SEG_CS;
                     }
                     else if (!Instruction->AnomalyOccurred)
                     {
-                        if (!SuppressErrors) printf("[0x%08I64X] ANOMALY: Meaningless segment override\n", VIRTUAL_ADDRESS);
-                        Instruction->AnomalyOccurred = TRUE;
+                        if (!SuppressErrors) printf("[0x%08llX] ANOMALY: Meaningless segment override\n", VIRTUAL_ADDRESS);
+                        Instruction->AnomalyOccurred = true;
                     }
                     break;
                 case PREFIX_SEGMENT_OVERRIDE_SS:
                     SANITY_CHECK_SEGMENT_OVERRIDE();
                     if (!IS_AMD64())
                     {
-                        X86Instruction->HasSegmentOverridePrefix = TRUE;
+                        X86Instruction->HasSegmentOverridePrefix = true;
                         X86Instruction->Segment = SEG_SS;
                     }
                     else if (!Instruction->AnomalyOccurred)
                     {
-                        if (!SuppressErrors) printf("[0x%08I64X] ANOMALY: Meaningless segment override\n", VIRTUAL_ADDRESS);
-                        Instruction->AnomalyOccurred = TRUE;
+                        if (!SuppressErrors) printf("[0x%08llX] ANOMALY: Meaningless segment override\n", VIRTUAL_ADDRESS);
+                        Instruction->AnomalyOccurred = true;
                     }
                     break;
                 case PREFIX_SEGMENT_OVERRIDE_DS:
                     SANITY_CHECK_SEGMENT_OVERRIDE();
                     if (!IS_AMD64())
                     {
-                        X86Instruction->HasSegmentOverridePrefix = TRUE;
+                        X86Instruction->HasSegmentOverridePrefix = true;
                         X86Instruction->Segment = SEG_DS;
                     }
                     else if (!Instruction->AnomalyOccurred)
                     {
-                        if (!SuppressErrors) printf("[0x%08I64X] ANOMALY: Meaningless segment override\n", VIRTUAL_ADDRESS);
-                        Instruction->AnomalyOccurred = TRUE;
+                        if (!SuppressErrors) printf("[0x%08llX] ANOMALY: Meaningless segment override\n", VIRTUAL_ADDRESS);
+                        Instruction->AnomalyOccurred = true;
                     }
                     break;
                 case PREFIX_SEGMENT_OVERRIDE_FS:
                     SANITY_CHECK_SEGMENT_OVERRIDE();
-                    X86Instruction->HasSegmentOverridePrefix = TRUE;
+                    X86Instruction->HasSegmentOverridePrefix = true;
                     X86Instruction->Segment = SEG_FS;
                     break;
                 case PREFIX_SEGMENT_OVERRIDE_GS:
                     SANITY_CHECK_SEGMENT_OVERRIDE();
-                    X86Instruction->HasSegmentOverridePrefix = TRUE;
+                    X86Instruction->HasSegmentOverridePrefix = true;
                     X86Instruction->Segment = SEG_GS;
                     break;
 
                 case PREFIX_LOCK:
                     if (!Instruction->AnomalyOccurred && X86Instruction->HasLockPrefix)
                     {
-                        if (!SuppressErrors) printf("[0x%08I64X] ANOMALY: Conflicting prefix\n", VIRTUAL_ADDRESS);
-                        Instruction->AnomalyOccurred = TRUE;
+                        if (!SuppressErrors) printf("[0x%08llX] ANOMALY: Conflicting prefix\n", VIRTUAL_ADDRESS);
+                        Instruction->AnomalyOccurred = true;
                     }
-                    X86Instruction->HasLockPrefix = TRUE;
+                    X86Instruction->HasLockPrefix = true;
                     break;
 
                 default:
@@ -1187,19 +1193,19 @@ BOOL X86_GetInstruction(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
 
             if (Instruction->PrefixCount >= X86_MAX_INSTRUCTION_LEN)
             {
-                if (!SuppressErrors) printf("[0x%08I64X] ERROR: Reached maximum prefix count %d\n", VIRTUAL_ADDRESS, X86_MAX_PREFIX_LENGTH);
+                if (!SuppressErrors) printf("[0x%08llX] ERROR: Reached maximum prefix count %d\n", VIRTUAL_ADDRESS, X86_MAX_PREFIX_LENGTH);
                 goto abort;
             }
             else if (Instruction->PrefixCount == X86_MAX_PREFIX_LENGTH)
             {
-                if (!SuppressErrors) printf("[0x%08I64X] ANOMALY: Reached maximum prefix count %d\n", VIRTUAL_ADDRESS, X86_MAX_PREFIX_LENGTH);
-                Instruction->AnomalyOccurred = TRUE;
+                if (!SuppressErrors) printf("[0x%08llX] ANOMALY: Reached maximum prefix count %d\n", VIRTUAL_ADDRESS, X86_MAX_PREFIX_LENGTH);
+                Instruction->AnomalyOccurred = true;
             }
 
             assert(Instruction->AnomalyOccurred || Instruction->PrefixCount < X86_MAX_PREFIX_LENGTH);
             Instruction->Prefixes[Instruction->PrefixCount] = Opcode;
             Instruction->PrefixCount++;
-            //DISASM_OUTPUT(("[0x%08I64X] Prefix 0x%02X (prefix count %d)\n", VIRTUAL_ADDRESS, Opcode, Instruction->PrefixCount));
+            //DISASM_OUTPUT(("[0x%08llX] Prefix 0x%02X (prefix count %d)\n", VIRTUAL_ADDRESS, Opcode, Instruction->PrefixCount));
         }
         else
         {
@@ -1214,13 +1220,13 @@ BOOL X86_GetInstruction(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
     {
         if (Instruction->PrefixCount >= X86_MAX_INSTRUCTION_LEN)
         {
-            if (!SuppressErrors) printf("[0x%08I64X] ERROR: Reached maximum prefix count %d\n", VIRTUAL_ADDRESS, X86_MAX_PREFIX_LENGTH);
+            if (!SuppressErrors) printf("[0x%08llX] ERROR: Reached maximum prefix count %d\n", VIRTUAL_ADDRESS, X86_MAX_PREFIX_LENGTH);
             goto abort;
         }
         else if (!Instruction->AnomalyOccurred && Instruction->PrefixCount == AMD64_MAX_PREFIX_LENGTH)
         {
-            if (!SuppressErrors) printf("[0x%08I64X] ANOMALY: Reached maximum prefix count %d\n", VIRTUAL_ADDRESS, X86_MAX_PREFIX_LENGTH);
-            Instruction->AnomalyOccurred = TRUE;
+            if (!SuppressErrors) printf("[0x%08llX] ANOMALY: Reached maximum prefix count %d\n", VIRTUAL_ADDRESS, X86_MAX_PREFIX_LENGTH);
+            Instruction->AnomalyOccurred = true;
         }
 
         assert(Instruction->AnomalyOccurred || Instruction->PrefixCount < AMD64_MAX_PREFIX_LENGTH);
@@ -1229,13 +1235,13 @@ BOOL X86_GetInstruction(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
         Instruction->PrefixCount++;
         X86Instruction->rex_b = Opcode;
         SET_REX(X86Instruction->rex, X86Instruction->rex_b);
-        DISASM_OUTPUT(("[0x%08I64X] REX prefix 0x%02X (prefix count %d, w=%d, r=%d, x=%d, b=%d)\n", VIRTUAL_ADDRESS, Opcode, Instruction->PrefixCount, X86Instruction->rex.w, X86Instruction->rex.r, X86Instruction->rex.x, X86Instruction->rex.b));
+        DISASM_OUTPUT(("[0x%08llX] REX prefix 0x%02X (prefix count %d, w=%d, r=%d, x=%d, b=%d)\n", VIRTUAL_ADDRESS, Opcode, Instruction->PrefixCount, X86Instruction->rex.w, X86Instruction->rex.r, X86Instruction->rex.x, X86Instruction->rex.b));
 
         assert(X86Instruction->AddressSize >= 4);
         if (X86Instruction->rex.w)
         {
             X86Instruction->OperandSize = 8;
-            X86Instruction->HasOperandSizePrefix = FALSE;
+            X86Instruction->HasOperandSizePrefix = false;
         }
         else if (X86Instruction->HasOperandSizePrefix)
         {
@@ -1252,13 +1258,13 @@ BOOL X86_GetInstruction(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
         X86Opcode = &X86_Opcodes_1[Opcode];
         assert(!X86_PREFIX(X86Opcode));
     }
-    //DISASM_OUTPUT(("[0x%08I64X] OperandSize = %d, AddressSize = %d\n", VIRTUAL_ADDRESS, X86Instruction->OperandSize, X86Instruction->AddressSize));
+    //DISASM_OUTPUT(("[0x%08llX] OperandSize = %d, AddressSize = %d\n", VIRTUAL_ADDRESS, X86Instruction->OperandSize, X86Instruction->AddressSize));
     Instruction->LastOpcode = Opcode;
     Instruction->OpcodeAddress = Address-1;
 
     if (X86_INVALID(X86Opcode))
     {
-        if (!SuppressErrors) printf("[0x%08I64X] ERROR: Invalid opcode 0x%02X\n", VIRTUAL_ADDRESS, Opcode);
+        if (!SuppressErrors) printf("[0x%08llX] ERROR: Invalid opcode 0x%02X\n", VIRTUAL_ADDRESS, Opcode);
         goto abort;
     }
 
@@ -1278,15 +1284,15 @@ BOOL X86_GetInstruction(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
         //
         if (X86_INVALID(X86Opcode))
         {
-            if (!SuppressErrors) printf("[0x%08I64X] ERROR: Invalid two byte opcode 0x%02X 0x%02X\n", VIRTUAL_ADDRESS, X86_TWO_BYTE_OPCODE, Opcode);
+            if (!SuppressErrors) printf("[0x%08llX] ERROR: Invalid two byte opcode 0x%02X 0x%02X\n", VIRTUAL_ADDRESS, X86_TWO_BYTE_OPCODE, Opcode);
             goto abort;
         }
-        
+
         if (X86Instruction->AddressSize == 8)
         {
             if (X86_Invalid_Addr64_2[Opcode])
             {
-                if (!SuppressErrors) printf("[0x%08I64X] ERROR: Opcode 0x%02X 0x%02X (\"%s\") illegal in 64-bit mode\n", VIRTUAL_ADDRESS, X86_TWO_BYTE_OPCODE, Opcode, X86Opcode->Mnemonic);
+                if (!SuppressErrors) printf("[0x%08llX] ERROR: Opcode 0x%02X 0x%02X (\"%s\") illegal in 64-bit mode\n", VIRTUAL_ADDRESS, X86_TWO_BYTE_OPCODE, Opcode, X86Opcode->Mnemonic);
                 goto abort;
             }
 #if 0
@@ -1296,7 +1302,7 @@ BOOL X86_GetInstruction(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
                      GET_REX_R(X86Instruction->rex_b) && !GET_REX_R(X86_REX_2[Opcode]) ||
                      GET_REX_W(X86Instruction->rex_b) && !GET_REX_W(X86_REX_2[Opcode])))
             {
-                if (!SuppressErrors) printf("[0x%08I64X] ERROR: Illegal REX prefix 0x%02X for opcode 0x%02X 0x%02X\n", VIRTUAL_ADDRESS, X86Instruction->rex_b, X86_TWO_BYTE_OPCODE, Opcode);
+                if (!SuppressErrors) printf("[0x%08llX] ERROR: Illegal REX prefix 0x%02X for opcode 0x%02X 0x%02X\n", VIRTUAL_ADDRESS, X86Instruction->rex_b, X86_TWO_BYTE_OPCODE, Opcode);
                 assert(0);
                 goto abort;
             }
@@ -1305,7 +1311,7 @@ BOOL X86_GetInstruction(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
 
         if (X86Instruction->OperandSize == 2 && X86_Invalid_Op16_2[Opcode])
         {
-            if (!SuppressErrors) printf("[0x%08I64X] ERROR: Opcode 0x%02X 0x%02X (\"%s\") illegal with 16-bit operand size\n", VIRTUAL_ADDRESS, X86_TWO_BYTE_OPCODE, Opcode, X86Opcode->Mnemonic);
+            if (!SuppressErrors) printf("[0x%08llX] ERROR: Opcode 0x%02X 0x%02X (\"%s\") illegal with 16-bit operand size\n", VIRTUAL_ADDRESS, X86_TWO_BYTE_OPCODE, Opcode, X86Opcode->Mnemonic);
             goto abort;
         }
 
@@ -1317,8 +1323,8 @@ BOOL X86_GetInstruction(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
 
         if (X86_SPECIAL_EXTENSION(X86Opcode))
         {
-            DISASM_OUTPUT(("[0x%08I64X] Special opcode extension 0x%02X 0x%02X\n", VIRTUAL_ADDRESS, X86_TWO_BYTE_OPCODE, Opcode));
-            SpecialExtension = TRUE;
+            DISASM_OUTPUT(("[0x%08llX] Special opcode extension 0x%02X 0x%02X\n", VIRTUAL_ADDRESS, X86_TWO_BYTE_OPCODE, Opcode));
+            SpecialExtension = true;
             goto HasSpecialExtension;
         }
         else if (SSE_Prefix && !X86_INVALID(&X86_SSE[Opcode])) // SSEx instruction
@@ -1340,10 +1346,10 @@ BOOL X86_GetInstruction(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
             // Slide any prefixes following the removed prefix down by 1
             memmove(&Instruction->Prefixes[i], &Instruction->Prefixes[i+1], Instruction->PrefixCount-i);
             Instruction->Prefixes[Instruction->PrefixCount] = 0;
-            Instruction->Repeat = FALSE;
-            X86Instruction->HasRepeatWhileEqualPrefix = FALSE;
-            X86Instruction->HasRepeatWhileNotEqualPrefix = FALSE;
-            X86Instruction->HasOperandSizePrefix = FALSE;
+            Instruction->Repeat = false;
+            X86Instruction->HasRepeatWhileEqualPrefix = false;
+            X86Instruction->HasRepeatWhileNotEqualPrefix = false;
+            X86Instruction->HasOperandSizePrefix = false;
             if (SSE_Prefix == PREFIX_OPERAND_SIZE)
             {
                 if (IS_AMD64() && X86Instruction->rex.w) X86Instruction->OperandSize = 8;
@@ -1352,10 +1358,10 @@ BOOL X86_GetInstruction(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
 
             if (IS_X86_16())
             {
-                if (!SuppressErrors) printf("[0x%08I64X] ERROR: SSE invalid in 16-bit mode\n", VIRTUAL_ADDRESS);
+                if (!SuppressErrors) printf("[0x%08llX] ERROR: SSE invalid in 16-bit mode\n", VIRTUAL_ADDRESS);
                 goto abort;
             }
-        
+
             assert(X86Instruction->HasModRM);
             switch (SSE_Prefix)
             {
@@ -1366,7 +1372,7 @@ BOOL X86_GetInstruction(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
 
             if (X86_INVALID(X86Opcode))
             {
-                if (!SuppressErrors) printf("[0x%08I64X] ERROR: Illegal SSE instruction opcode 0x%02X 0x%02X + prefix 0x%02X\n", VIRTUAL_ADDRESS, Instruction->OpcodeBytes[0], Instruction->OpcodeBytes[1], Instruction->OpcodeBytes[2]);
+                if (!SuppressErrors) printf("[0x%08llX] ERROR: Illegal SSE instruction opcode 0x%02X 0x%02X + prefix 0x%02X\n", VIRTUAL_ADDRESS, Instruction->OpcodeBytes[0], Instruction->OpcodeBytes[1], Instruction->OpcodeBytes[2]);
                 goto abort;
             }
             else if (X86_EXTENDED_OPCODE(X86Opcode))
@@ -1385,15 +1391,15 @@ BOOL X86_GetInstruction(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
 
                 if (X86_INVALID(X86Opcode))
                 {
-                    if (!SuppressErrors) printf("[0x%08I64X] ERROR: Illegal SSE instruction opcode 0x%02X 0x%02X + prefix 0x%02X + extension %d\n", VIRTUAL_ADDRESS, Instruction->OpcodeBytes[0], Instruction->OpcodeBytes[1], Instruction->OpcodeBytes[2], OpcodeExtension);
+                    if (!SuppressErrors) printf("[0x%08llX] ERROR: Illegal SSE instruction opcode 0x%02X 0x%02X + prefix 0x%02X + extension %d\n", VIRTUAL_ADDRESS, Instruction->OpcodeBytes[0], Instruction->OpcodeBytes[1], Instruction->OpcodeBytes[2], OpcodeExtension);
                     goto abort;
                 }
             }
 
-            Instruction->Repeat = FALSE;
-            X86Instruction->HasRepeatWhileEqualPrefix = FALSE;
-            X86Instruction->HasRepeatWhileNotEqualPrefix = FALSE;
-            X86Instruction->HasOperandSizePrefix = FALSE;
+            Instruction->Repeat = false;
+            X86Instruction->HasRepeatWhileEqualPrefix = false;
+            X86Instruction->HasRepeatWhileNotEqualPrefix = false;
+            X86Instruction->HasOperandSizePrefix = false;
             switch (X86_GET_CATEGORY(X86Opcode))
             {
                 case ITYPE_SSE: case ITYPE_SSE2: case ITYPE_SSE3: break;
@@ -1410,7 +1416,7 @@ BOOL X86_GetInstruction(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
             if (X86_INVALID(X86Opcode))
             {
                 Instruction->Length++;
-                if (!SuppressErrors) printf("[0x%08I64X] ERROR: Invalid group opcode 0x%02X 0x%02X extension 0x%02X\n", VIRTUAL_ADDRESS, X86_TWO_BYTE_OPCODE, Opcode, OpcodeExtension);
+                if (!SuppressErrors) printf("[0x%08llX] ERROR: Invalid group opcode 0x%02X 0x%02X extension 0x%02X\n", VIRTUAL_ADDRESS, X86_TWO_BYTE_OPCODE, Opcode, OpcodeExtension);
                 goto abort;
             }
 
@@ -1419,12 +1425,12 @@ BOOL X86_GetInstruction(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
             X86Instruction->Group = (U8)Group;
             assert(Group > 0 && Group <= 19);
             assert(X86Opcode->Mnemonic);
-            DISASM_OUTPUT(("[0x%08I64X] Group %d (bytes 0x%02X 0x%02X) extension 0x%02X (\"%s\")\n", VIRTUAL_ADDRESS, Group, X86_TWO_BYTE_OPCODE, Opcode, OpcodeExtension, X86Opcode->Mnemonic));
+            DISASM_OUTPUT(("[0x%08llX] Group %d (bytes 0x%02X 0x%02X) extension 0x%02X (\"%s\")\n", VIRTUAL_ADDRESS, Group, X86_TWO_BYTE_OPCODE, Opcode, OpcodeExtension, X86Opcode->Mnemonic));
         }
         else
         {
             assert(X86Opcode->Mnemonic);
-            DISASM_OUTPUT(("[0x%08I64X] Two byte opcode 0x%02X 0x%02X (\"%s\")\n", VIRTUAL_ADDRESS, X86_TWO_BYTE_OPCODE, Opcode, X86Opcode->Mnemonic));
+            DISASM_OUTPUT(("[0x%08llX] Two byte opcode 0x%02X 0x%02X (\"%s\")\n", VIRTUAL_ADDRESS, X86_TWO_BYTE_OPCODE, Opcode, X86Opcode->Mnemonic));
             X86Instruction->HasModRM = X86_ModRM_2[Opcode];
             if (X86Instruction->HasModRM) X86Instruction->modrm_b = *Address;
         }
@@ -1435,7 +1441,7 @@ BOOL X86_GetInstruction(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
         {
             if (X86_Invalid_Addr64_1[Opcode])
             {
-                if (!SuppressErrors) printf("[0x%08I64X] ERROR: Opcode 0x%02X (\"%s\") illegal in 64-bit mode\n", VIRTUAL_ADDRESS, Opcode, X86Opcode->Mnemonic);
+                if (!SuppressErrors) printf("[0x%08llX] ERROR: Opcode 0x%02X (\"%s\") illegal in 64-bit mode\n", VIRTUAL_ADDRESS, Opcode, X86Opcode->Mnemonic);
                 goto abort;
             }
 
@@ -1446,7 +1452,7 @@ BOOL X86_GetInstruction(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
                  GET_REX_R(X86Instruction->rex_b) && !GET_REX_R(X86_REX_1[Opcode]) ||
                  GET_REX_W(X86Instruction->rex_b) && !GET_REX_W(X86_REX_1[Opcode])))
             {
-                if (!SuppressErrors) printf("[0x%08I64X] ERROR: Illegal REX prefix 0x%02X for opcode 0x%02X\n", VIRTUAL_ADDRESS, X86Instruction->rex_b, Opcode);
+                if (!SuppressErrors) printf("[0x%08llX] ERROR: Illegal REX prefix 0x%02X for opcode 0x%02X\n", VIRTUAL_ADDRESS, X86Instruction->rex_b, Opcode);
                 assert(0);
                 goto abort;
             }
@@ -1455,7 +1461,7 @@ BOOL X86_GetInstruction(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
 
         if (X86Instruction->OperandSize == 2 && X86_Invalid_Op16_1[Opcode])
         {
-            if (!SuppressErrors) printf("[0x%08I64X] ERROR: Opcode 0x%02X (\"%s\") illegal with 16-bit operand size\n", VIRTUAL_ADDRESS, Opcode, X86Opcode->Mnemonic);
+            if (!SuppressErrors) printf("[0x%08llX] ERROR: Opcode 0x%02X (\"%s\") illegal with 16-bit operand size\n", VIRTUAL_ADDRESS, Opcode, X86Opcode->Mnemonic);
             goto abort;
         }
 
@@ -1471,8 +1477,8 @@ BOOL X86_GetInstruction(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
 
             if (X86_SPECIAL_EXTENSION(X86Opcode))
             {
-                DISASM_OUTPUT(("[0x%08I64X] Special opcode extension 0x%02X 0x%02X\n", VIRTUAL_ADDRESS, X86_TWO_BYTE_OPCODE, Opcode));
-                SpecialExtension = TRUE;
+                DISASM_OUTPUT(("[0x%08llX] Special opcode extension 0x%02X 0x%02X\n", VIRTUAL_ADDRESS, X86_TWO_BYTE_OPCODE, Opcode));
+                SpecialExtension = true;
                 goto HasSpecialExtension;
             }
 
@@ -1481,13 +1487,13 @@ BOOL X86_GetInstruction(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
             if (X86_INVALID(X86Opcode))
             {
                 Instruction->Length++;
-                if (!SuppressErrors) printf("[0x%08I64X] ERROR: Invalid group opcode 0x%02X extension 0x%02X\n", VIRTUAL_ADDRESS, Opcode, OpcodeExtension);
+                if (!SuppressErrors) printf("[0x%08llX] ERROR: Invalid group opcode 0x%02X extension 0x%02X\n", VIRTUAL_ADDRESS, Opcode, OpcodeExtension);
                 goto abort;
             }
 
             Group = X86_Groups_1[Opcode];
             X86Instruction->Group = (U8)Group;
-            DISASM_OUTPUT(("[0x%08I64X] Group %d (byte 0x%02X) extension 0x%02X (\"%s\")\n", VIRTUAL_ADDRESS, Group, Opcode, OpcodeExtension, X86Opcode->Mnemonic));
+            DISASM_OUTPUT(("[0x%08llX] Group %d (byte 0x%02X) extension 0x%02X (\"%s\")\n", VIRTUAL_ADDRESS, Group, Opcode, OpcodeExtension, X86Opcode->Mnemonic));
             assert(Group > 0 && Group <= 17);
             assert(X86Opcode->Mnemonic);
         }
@@ -1495,12 +1501,12 @@ BOOL X86_GetInstruction(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
         {
             if (X86_SPECIAL_EXTENSION(X86Opcode))
             {
-                DISASM_OUTPUT(("[0x%08I64X] Special opcode extension 0x%02X\n", VIRTUAL_ADDRESS, Opcode));
-                SpecialExtension = TRUE;
+                DISASM_OUTPUT(("[0x%08llX] Special opcode extension 0x%02X\n", VIRTUAL_ADDRESS, Opcode));
+                SpecialExtension = true;
                 goto HasSpecialExtension;
             }
 
-            DISASM_OUTPUT(("[0x%08I64X] One byte opcode 0x%02X (\"%s\")\n", VIRTUAL_ADDRESS, Opcode, X86Opcode->Mnemonic));
+            DISASM_OUTPUT(("[0x%08llX] One byte opcode 0x%02X (\"%s\")\n", VIRTUAL_ADDRESS, Opcode, X86Opcode->Mnemonic));
         }
     }
 
@@ -1515,7 +1521,7 @@ HasSpecialExtension:
             X86Opcode = &X86Opcode->Table[*Address];
             if (X86_INVALID(X86Opcode))
             {
-                if (!SuppressErrors) printf("[0x%08I64X] ERROR: Illegal opcode 0x%02X 0x%02X + modrm 0x%02X\n", VIRTUAL_ADDRESS, Instruction->OpcodeBytes[0], Instruction->OpcodeBytes[1], *Address);
+                if (!SuppressErrors) printf("[0x%08llX] ERROR: Illegal opcode 0x%02X 0x%02X + modrm 0x%02X\n", VIRTUAL_ADDRESS, Instruction->OpcodeBytes[0], Instruction->OpcodeBytes[1], *Address);
                 goto abort;
             }
             else if (X86_EXTENDED_OPCODE(X86Opcode))
@@ -1528,7 +1534,7 @@ HasSpecialExtension:
                 if (X86_INVALID(X86Opcode))
                 {
                     Instruction->Length++;
-                    if (!SuppressErrors) printf("[0x%08I64X] ERROR: Invalid group opcode 0x%02X 0x%02X extension 0x%02X\n", VIRTUAL_ADDRESS, X86_TWO_BYTE_OPCODE, Opcode, OpcodeExtension);
+                    if (!SuppressErrors) printf("[0x%08llX] ERROR: Invalid group opcode 0x%02X 0x%02X extension 0x%02X\n", VIRTUAL_ADDRESS, X86_TWO_BYTE_OPCODE, Opcode, OpcodeExtension);
                     goto abort;
                 }
 
@@ -1537,7 +1543,7 @@ HasSpecialExtension:
                 X86Instruction->Group = (U8)Group;
                 assert(Group > 0 && Group <= 19);
                 assert(X86Opcode->Mnemonic);
-                DISASM_OUTPUT(("[0x%08I64X] Group %d (bytes 0x%02X 0x%02X) extension 0x%02X (\"%s\")\n", VIRTUAL_ADDRESS, Group, X86_TWO_BYTE_OPCODE, Opcode, OpcodeExtension, X86Opcode->Mnemonic));
+                DISASM_OUTPUT(("[0x%08llX] Group %d (bytes 0x%02X 0x%02X) extension 0x%02X (\"%s\")\n", VIRTUAL_ADDRESS, Group, X86_TWO_BYTE_OPCODE, Opcode, OpcodeExtension, X86Opcode->Mnemonic));
             }
             else if (!X86_OPERAND_COUNT(X86Opcode))
             {
@@ -1546,7 +1552,7 @@ HasSpecialExtension:
         }
         else if (X86Opcode->MnemonicFlags & ITYPE_EXT_FPU)
         {
-            assert(X86Opcode->Table);       
+            assert(X86Opcode->Table);
             if (X86Instruction->modrm_b < 0xC0)
             {
                 // It is an opcode extension, use the X86Opcode->Table
@@ -1562,11 +1568,11 @@ HasSpecialExtension:
 
             if (X86_INVALID(X86Opcode))
             {
-                if (!SuppressErrors) printf("[0x%08I64X] ERROR: Invalid FPU opcode 0x%02X + modrm extension 0x%02X (index 0x%02X)\n", VIRTUAL_ADDRESS, Opcode, X86Instruction->modrm_b, 0x08 + OpcodeExtension);
+                if (!SuppressErrors) printf("[0x%08llX] ERROR: Invalid FPU opcode 0x%02X + modrm extension 0x%02X (index 0x%02X)\n", VIRTUAL_ADDRESS, Opcode, X86Instruction->modrm_b, 0x08 + OpcodeExtension);
                 goto abort;
             }
 
-            DISASM_OUTPUT(("[0x%08I64X] FPU instruction is (\"%s\"): 0x%02X + modrm 0x%02X (index 0x%02X)\n", VIRTUAL_ADDRESS, X86Opcode->Mnemonic, Opcode, X86Instruction->modrm_b, 0x08 + OpcodeExtension));
+            DISASM_OUTPUT(("[0x%08llX] FPU instruction is (\"%s\"): 0x%02X + modrm 0x%02X (index 0x%02X)\n", VIRTUAL_ADDRESS, X86Opcode->Mnemonic, Opcode, X86Instruction->modrm_b, 0x08 + OpcodeExtension));
             if (!X86_OPERAND_COUNT(X86Opcode)) INSTR_INC(1); // increment Instruction->Length and address
         }
         else if (X86Opcode->MnemonicFlags & ITYPE_EXT_SUFFIX)
@@ -1575,10 +1581,10 @@ HasSpecialExtension:
             {
                 if (!Instruction->AnomalyOccurred && X86Opcode->Table == X86_3DNOW_0F)
                 {
-                    if (!SuppressErrors) printf("[0x%08I64X] ANOMALY: operand size prefix used with 3DNOW instruction\n", VIRTUAL_ADDRESS);
-                    Instruction->AnomalyOccurred = TRUE;
+                    if (!SuppressErrors) printf("[0x%08llX] ANOMALY: operand size prefix used with 3DNOW instruction\n", VIRTUAL_ADDRESS);
+                    Instruction->AnomalyOccurred = true;
                 }
-                X86Instruction->HasOperandSizePrefix = FALSE;
+                X86Instruction->HasOperandSizePrefix = false;
                 X86Instruction->OperandSize = 4;
             }
             Instruction->OperandCount = X86_OPERAND_COUNT(X86Opcode);
@@ -1593,10 +1599,10 @@ HasSpecialExtension:
             Instruction->OpcodeBytes[2] = Suffix;
             Instruction->OpcodeLength = 3;
             X86Opcode = &X86Opcode->Table[Suffix];
-            
+
             if (X86_INVALID(X86Opcode))
             {
-                if (!SuppressErrors) printf("[0x%08I64X] ERROR: Illegal opcode 0x%02X 0x%02X + suffix 0x%02X\n", VIRTUAL_ADDRESS, Instruction->OpcodeBytes[0], Instruction->OpcodeBytes[1], Suffix);
+                if (!SuppressErrors) printf("[0x%08llX] ERROR: Illegal opcode 0x%02X 0x%02X + suffix 0x%02X\n", VIRTUAL_ADDRESS, Instruction->OpcodeBytes[0], Instruction->OpcodeBytes[1], Suffix);
                 goto abort;
             }
             assert(Instruction->Length >= 4 + Instruction->PrefixCount);
@@ -1610,19 +1616,19 @@ HasSpecialExtension:
         }
     }
 
-    // Detect incompatibilities 
+    // Detect incompatibilities
     if (IS_X86_16() && X86Opcode->CPU > CPU_I386)
     {
-        if (!SuppressErrors) printf("[0x%08I64X] ERROR: Instruction \"%s\" (opcode 0x%02X) can't be used in 16-bit X86\n", VIRTUAL_ADDRESS, X86Opcode->Mnemonic, Instruction->LastOpcode);
+        if (!SuppressErrors) printf("[0x%08llX] ERROR: Instruction \"%s\" (opcode 0x%02X) can't be used in 16-bit X86\n", VIRTUAL_ADDRESS, X86Opcode->Mnemonic, Instruction->LastOpcode);
         goto abort;
     }
     if (!IS_AMD64() && X86Opcode->CPU >= CPU_AMD64)
     {
-        if (!SuppressErrors) printf("[0x%08I64X] ERROR: Instruction \"%s\" (opcode 0x%02X) can only be used in X86-64\n", VIRTUAL_ADDRESS, X86Opcode->Mnemonic, Instruction->LastOpcode);
+        if (!SuppressErrors) printf("[0x%08llX] ERROR: Instruction \"%s\" (opcode 0x%02X) can only be used in X86-64\n", VIRTUAL_ADDRESS, X86Opcode->Mnemonic, Instruction->LastOpcode);
         goto abort;
     }
 
-    // Copy the opcode into the local structure and set the fields 
+    // Copy the opcode into the local structure and set the fields
     assert(Instruction->OpcodeLength && !X86_INVALID(X86Opcode));
     memcpy(&X86Instruction->Opcode, X86Opcode, sizeof(X86_OPCODE));
     Instruction->Groups |= X86_GET_CATEGORY(X86Opcode);
@@ -1641,14 +1647,14 @@ HasSpecialExtension:
         case ITYPE_PUSHF: case ITYPE_POPF:
         case ITYPE_ENTER: case ITYPE_LEAVE:
             SANITY_CHECK_SEGMENT_OVERRIDE();
-            X86Instruction->HasSegmentOverridePrefix = FALSE;
+            X86Instruction->HasSegmentOverridePrefix = false;
             X86Instruction->Segment = SEG_SS;
             break;
-        case ITYPE_RET: case ITYPE_DEBUG: 
-        case ITYPE_OFLOW: case ITYPE_TRAP: 
+        case ITYPE_RET: case ITYPE_DEBUG:
+        case ITYPE_OFLOW: case ITYPE_TRAP:
         case ITYPE_TRAPRET:
             SANITY_CHECK_SEGMENT_OVERRIDE();
-            X86Instruction->HasSegmentOverridePrefix = FALSE;
+            X86Instruction->HasSegmentOverridePrefix = false;
             X86Instruction->Segment = SEG_CS;
             break;
     }
@@ -1670,10 +1676,10 @@ HasSpecialExtension:
 
                     if (!Instruction->AnomalyOccurred)
                     {
-                        if (!SuppressErrors) printf("[0x%08I64X] ANOMALY: operand size prefix used with FPU/MMX/SSEx\n", VIRTUAL_ADDRESS);
+                        if (!SuppressErrors) printf("[0x%08llX] ANOMALY: operand size prefix used with FPU/MMX/SSEx\n", VIRTUAL_ADDRESS);
                         goto abort;
                     }
-                    X86Instruction->HasOperandSizePrefix = FALSE;
+                    X86Instruction->HasOperandSizePrefix = false;
                     if (X86Instruction->OperandSize == 2) X86Instruction->OperandSize = 2;
                     break;
 
@@ -1683,7 +1689,7 @@ HasSpecialExtension:
                     // The Intel manual says this results in unpredictable behavior -- it's not even
                     // clear which SSE prefix is used as the third opcode byte in this case
                     // (e.g., is it the first or last SSE prefix?)
-                    if (!SuppressErrors) printf("[0x%08I64X] ERROR: rep/repne used with MMX/SSEx\n", VIRTUAL_ADDRESS);
+                    if (!SuppressErrors) printf("[0x%08llX] ERROR: rep/repne used with MMX/SSEx\n", VIRTUAL_ADDRESS);
                     goto abort;
 
                 default:
@@ -1703,12 +1709,12 @@ HasSpecialExtension:
             {
                 if (Instruction->Prefixes[i] == PREFIX_OPERAND_SIZE)
                 {
-                    X86Instruction->HasOperandSizePrefix = FALSE;
+                    X86Instruction->HasOperandSizePrefix = false;
                     if (!Instruction->AnomalyOccurred)
                     {
-                        if (!SuppressErrors) printf("[0x%08I64X] ANOMALY: use of operand size prefix meaningless when REX.w=1\n", VIRTUAL_ADDRESS);
-                        Instruction->AnomalyOccurred = TRUE;
-                    }               
+                        if (!SuppressErrors) printf("[0x%08llX] ANOMALY: use of operand size prefix meaningless when REX.w=1\n", VIRTUAL_ADDRESS);
+                        Instruction->AnomalyOccurred = true;
+                    }
                 }
             }
         }
@@ -1716,22 +1722,22 @@ HasSpecialExtension:
         // Set default operand size to 64 instead of 32 for some instructions
         switch (Instruction->Type)
         {
-            case ITYPE_PUSH: case ITYPE_POP: 
+            case ITYPE_PUSH: case ITYPE_POP:
             case ITYPE_PUSHF: case ITYPE_POPF:
             case ITYPE_ENTER: case ITYPE_LEAVE:
             case ITYPE_CALL: case ITYPE_BRANCH:
             case ITYPE_LOOPCC: case ITYPE_RET:
-                X86Instruction->HasDefault64Operand = TRUE;
+                X86Instruction->HasDefault64Operand = true;
                 break;
 
             case ITYPE_SYSTEM:
                 if (Instruction->OpcodeLength != 2) break;
 
                 // lgdt/lidt/lldt/ltr
-                if ((Instruction->LastOpcode == 0x00 || Instruction->LastOpcode == 0x01) && 
+                if ((Instruction->LastOpcode == 0x00 || Instruction->LastOpcode == 0x01) &&
                     (OpcodeExtension == 0x02 || OpcodeExtension == 0x03))
                 {
-                    X86Instruction->HasDefault64Operand = TRUE;
+                    X86Instruction->HasDefault64Operand = true;
                 }
                 break;
 
@@ -1745,8 +1751,8 @@ HasSpecialExtension:
             {
                 if (!Instruction->AnomalyOccurred)
                 {
-                    if (!SuppressErrors) printf("[0x%08I64X] ANOMALY: use of REX.w is meaningless (default operand size is 64)\n", VIRTUAL_ADDRESS);
-                    Instruction->AnomalyOccurred = TRUE;
+                    if (!SuppressErrors) printf("[0x%08llX] ANOMALY: use of REX.w is meaningless (default operand size is 64)\n", VIRTUAL_ADDRESS);
+                    Instruction->AnomalyOccurred = true;
                 }
                 X86Instruction->rex_b &= ~8;
                 X86Instruction->rex.w = 0;
@@ -1755,7 +1761,7 @@ HasSpecialExtension:
             if (X86Instruction->HasOperandSizePrefix)
             {
                 assert(X86Instruction->OperandSize == 2);
-                X86Instruction->HasDefault64Operand = FALSE;
+                X86Instruction->HasDefault64Operand = false;
             }
             else
             {
@@ -1779,12 +1785,12 @@ HasSpecialExtension:
                 {
                     if (!Instruction->AnomalyOccurred)
                     {
-                        if (!SuppressErrors) printf("[0x%08I64X] ANOMALY: REPNE should only be used with cmps/scas\n", VIRTUAL_ADDRESS);
-                        Instruction->AnomalyOccurred = TRUE;
+                        if (!SuppressErrors) printf("[0x%08llX] ANOMALY: REPNE should only be used with cmps/scas\n", VIRTUAL_ADDRESS);
+                        Instruction->AnomalyOccurred = true;
                     }
                     // Treat it as just a "rep"
-                    X86Instruction->HasRepeatWhileNotEqualPrefix = FALSE;
-                    X86Instruction->HasRepeatWhileEqualPrefix = TRUE;
+                    X86Instruction->HasRepeatWhileNotEqualPrefix = false;
+                    X86Instruction->HasRepeatWhileEqualPrefix = true;
                 }
                 break;
             case ITYPE_STRCMP:
@@ -1792,12 +1798,12 @@ HasSpecialExtension:
             default:
                 if (!Instruction->AnomalyOccurred)
                 {
-                    if (!SuppressErrors) printf("[0x%08I64X] ANOMALY: Repeat prefix used with non-string instruction\n", VIRTUAL_ADDRESS);
-                    Instruction->AnomalyOccurred = TRUE;
+                    if (!SuppressErrors) printf("[0x%08llX] ANOMALY: Repeat prefix used with non-string instruction\n", VIRTUAL_ADDRESS);
+                    Instruction->AnomalyOccurred = true;
                 }
-                Instruction->Repeat = FALSE;
-                X86Instruction->HasRepeatWhileEqualPrefix = FALSE;
-                X86Instruction->HasRepeatWhileNotEqualPrefix = FALSE;
+                Instruction->Repeat = false;
+                X86Instruction->HasRepeatWhileEqualPrefix = false;
+                X86Instruction->HasRepeatWhileNotEqualPrefix = false;
                 break;
         }
     }
@@ -1810,8 +1816,8 @@ HasSpecialExtension:
             if (Instruction->Type == ITYPE_STRCMP) { APPENDS("repe "); }
             else { APPENDS("rep "); }
         }
-        if (X86Instruction->HasRepeatWhileNotEqualPrefix) APPENDS("repne "); 
-        if (X86Instruction->HasLockPrefix) APPENDS("lock "); 
+        if (X86Instruction->HasRepeatWhileNotEqualPrefix) APPENDS("repne ");
+        if (X86Instruction->HasLockPrefix) APPENDS("lock ");
         if (X86Instruction->HasBranchTakenPrefix) APPENDS("hinttake ");
         if (X86Instruction->HasBranchNotTakenPrefix) APPENDS("hintskip ");
         APPENDPAD(12);
@@ -1843,8 +1849,8 @@ HasSpecialExtension:
         InstructionLength = X86_GetLength(Instruction, Instruction->Address);
         if (InstructionLength && Instruction->Length != InstructionLength)
         {
-            printf("[0x%08I64X] WARNING: instruction lengths differ (%d vs %d)\n", VIRTUAL_ADDRESS, Instruction->Length, InstructionLength);
-            DumpInstruction(Instruction, TRUE, TRUE);
+            printf("[0x%08llX] WARNING: instruction lengths differ (%d vs %d)\n", VIRTUAL_ADDRESS, Instruction->Length, InstructionLength);
+            DumpInstruction(Instruction, true, true);
             assert(0);
         }
     }
@@ -1868,21 +1874,21 @@ HasSpecialExtension:
         {
             if (!Instruction->AnomalyOccurred)
             {
-                if (!SuppressErrors) printf("[0x%08I64X] ANOMALY: address size prefix used with no addressing\n", VIRTUAL_ADDRESS);
-                Instruction->AnomalyOccurred = TRUE;
+                if (!SuppressErrors) printf("[0x%08llX] ANOMALY: address size prefix used with no addressing\n", VIRTUAL_ADDRESS);
+                Instruction->AnomalyOccurred = true;
             }
-            X86Instruction->HasAddressSizePrefix = FALSE;
+            X86Instruction->HasAddressSizePrefix = false;
         }
 
         if (X86Instruction->HasSegmentOverridePrefix)
         {
             if (!Instruction->AnomalyOccurred)
             {
-                if (!SuppressErrors) printf("[0x%08I64X] ANOMALY: segment override used with no addressing\n", VIRTUAL_ADDRESS);
-                Instruction->AnomalyOccurred = TRUE;
+                if (!SuppressErrors) printf("[0x%08llX] ANOMALY: segment override used with no addressing\n", VIRTUAL_ADDRESS);
+                Instruction->AnomalyOccurred = true;
             }
-            X86Instruction->HasSegmentOverridePrefix = FALSE;
-        }   
+            X86Instruction->HasSegmentOverridePrefix = false;
+        }
     }
 
     // Detect use of unusual segments
@@ -1895,34 +1901,34 @@ HasSpecialExtension:
             case SEG_ES:
                 switch (Instruction->Type)
                 {
-                    case ITYPE_IN: case ITYPE_STRMOV: case ITYPE_STRCMP: case ITYPE_STRSTOR:
+                     case ITYPE_IN: case ITYPE_STRMOV: case ITYPE_STRCMP: case ITYPE_STRSTOR:
                         break;
                     default:
-                        if (!SuppressErrors) printf("[0x%08I64X] ANOMALY: use of unexpected segment ES\n", VIRTUAL_ADDRESS);
-                        Instruction->AnomalyOccurred = TRUE;
+                        if (!SuppressErrors) printf("[0x%08llX] ANOMALY: use of unexpected segment ES\n", VIRTUAL_ADDRESS);
+                        Instruction->AnomalyOccurred = true;
                         break;
                 }
                 break;
             case SEG_FS:
                 if (IS_X86_32() && !(Instruction->Groups & ITYPE_EXEC)) break;
-                if (!SuppressErrors) printf("[0x%08I64X] ANOMALY: use of unexpected segment FS\n", VIRTUAL_ADDRESS);
-                Instruction->AnomalyOccurred = TRUE;
+                if (!SuppressErrors) printf("[0x%08llX] ANOMALY: use of unexpected segment FS\n", VIRTUAL_ADDRESS);
+                Instruction->AnomalyOccurred = true;
                 break;
             case SEG_GS:
                 if (IS_AMD64() && !(Instruction->Groups & ITYPE_EXEC)) break;
-                if (!SuppressErrors) printf("[0x%08I64X] ANOMALY: use of unexpected segment GS\n", VIRTUAL_ADDRESS);
-                Instruction->AnomalyOccurred = TRUE;
+                if (!SuppressErrors) printf("[0x%08llX] ANOMALY: use of unexpected segment GS\n", VIRTUAL_ADDRESS);
+                Instruction->AnomalyOccurred = true;
                 break;
             default:
-                if (!SuppressErrors) printf("[0x%08I64X] ANOMALY: unexpected segment 0x%02X\n", VIRTUAL_ADDRESS, X86Instruction->Selector);
-                Instruction->AnomalyOccurred = TRUE;
+                if (!SuppressErrors) printf("[0x%08llX] ANOMALY: unexpected segment 0x%02X\n", VIRTUAL_ADDRESS, X86Instruction->Selector);
+                Instruction->AnomalyOccurred = true;
                 break;
         }
     }
 
     if ((X86Opcode->OperandFlags[0] & OP_COND_EXEC) == OP_COND_EXEC)
     {
-        assert(Instruction->Type == ITYPE_BRANCHCC || Instruction->Type == ITYPE_LOOPCC);
+         assert(Instruction->Type == ITYPE_BRANCHCC || Instruction->Type == ITYPE_LOOPCC);
         for (i = 0; i < Instruction->PrefixCount; i++)
         {
             switch (Instruction->Prefixes[i])
@@ -1930,22 +1936,22 @@ HasSpecialExtension:
                 case PREFIX_BRANCH_NOT_TAKEN:
                     if (!Instruction->AnomalyOccurred && X86Instruction->Segment != SEG_CS)
                     {
-                        if (!SuppressErrors) printf("[0x%08I64X] ANOMALY: Segment override used with conditional branch\n", VIRTUAL_ADDRESS);
-                        Instruction->AnomalyOccurred = TRUE;
+                        if (!SuppressErrors) printf("[0x%08llX] ANOMALY: Segment override used with conditional branch\n", VIRTUAL_ADDRESS);
+                        Instruction->AnomalyOccurred = true;
                     }
-                    X86Instruction->HasSegmentOverridePrefix = FALSE;
+                    X86Instruction->HasSegmentOverridePrefix = false;
                     X86Instruction->Segment = SEG_CS;
-                    X86Instruction->HasBranchNotTakenPrefix = TRUE;
+                    X86Instruction->HasBranchNotTakenPrefix = true;
                     break;
                 case PREFIX_BRANCH_TAKEN:
                     if (!Instruction->AnomalyOccurred && X86Instruction->Segment != SEG_DS)
                     {
-                        if (!SuppressErrors) printf("[0x%08I64X] ANOMALY: Segment override used with conditional branch\n", VIRTUAL_ADDRESS);
-                        Instruction->AnomalyOccurred = TRUE;
+                        if (!SuppressErrors) printf("[0x%08llX] ANOMALY: Segment override used with conditional branch\n", VIRTUAL_ADDRESS);
+                        Instruction->AnomalyOccurred = true;
                     }
-                    X86Instruction->HasSegmentOverridePrefix = FALSE;
+                    X86Instruction->HasSegmentOverridePrefix = false;
                     X86Instruction->Segment = SEG_CS;
-                    X86Instruction->HasBranchTakenPrefix = TRUE;
+                    X86Instruction->HasBranchTakenPrefix = true;
                     break;
             }
         }
@@ -1954,10 +1960,10 @@ HasSpecialExtension:
     //
     // If lock prefix is enabled, verify it is valid
     //
-    if (X86Instruction->HasLockPrefix && 
+    if (X86Instruction->HasLockPrefix &&
         !IsValidLockPrefix(X86Instruction, Opcode, Instruction->OpcodeLength, Group, OpcodeExtension))
     {
-        if (!SuppressErrors) printf("[0x%08I64X] ERROR: Illegal use of lock prefix for instruction \"%s\"\n", VIRTUAL_ADDRESS, X86Opcode->Mnemonic);
+        if (!SuppressErrors) printf("[0x%08llX] ERROR: Illegal use of lock prefix for instruction \"%s\"\n", VIRTUAL_ADDRESS, X86Opcode->Mnemonic);
         goto abort;
     }
 
@@ -1967,7 +1973,7 @@ HasSpecialExtension:
 
     if (Disassemble)
     {
-        if ((Flags & DISASM_SHOWFLAGS) && 
+        if ((Flags & DISASM_SHOWFLAGS) &&
             (X86Instruction->Opcode.Preconditions || X86Instruction->Opcode.FlagsChanged || X86Instruction->Opcode.ResultsIfTrue))
         {
             APPENDPAD(124);
@@ -2102,14 +2108,14 @@ HasSpecialExtension:
 
     if (!Instruction->Length || Instruction->Length > X86_MAX_INSTRUCTION_LEN)
     {
-        if (!SuppressErrors) printf("[0x%08I64X] ERROR: maximum instruction length reached (\"%s\")\n", VIRTUAL_ADDRESS, X86Instruction->Opcode.Mnemonic);
+        if (!SuppressErrors) printf("[0x%08llX] ERROR: maximum instruction length reached (\"%s\")\n", VIRTUAL_ADDRESS, X86Instruction->Opcode.Mnemonic);
         goto abort;
     }
 
     if (!Decode)
     {
         Disassembler->Stage3CountNoDecode++;
-        return TRUE; // all work is done
+        return true; // all work is done
     }
 
     //////////////////////////////////////////////////////////////////////
@@ -2120,10 +2126,10 @@ HasSpecialExtension:
     if (Instruction->Groups & ITYPE_EXEC)
     {
         // If it is a negative offset with a 1-byte or 2-byte offset, assume it is a loop
-        if (Operand1->Type == OPTYPE_OFFSET && 
+        if (Operand1->Type == OPTYPE_OFFSET &&
             Operand1->Length <= 2 && X86Instruction->Displacement < 0)
         {
-            Instruction->CodeBranch.IsLoop = TRUE;
+            Instruction->CodeBranch.IsLoop = true;
             Instruction->CodeBranch.Operand = Operand1;
         }
 
@@ -2131,8 +2137,8 @@ HasSpecialExtension:
             Operand1->TargetAddress >= (U64)Instruction->Address &&
             Operand1->TargetAddress < (U64)Instruction->Address + Instruction->Length)
         {
-            if (!SuppressErrors) printf("[0x%08I64X] ANOMALY: branch into the middle of an instruction\n", VIRTUAL_ADDRESS);
-            Instruction->AnomalyOccurred = TRUE;
+            if (!SuppressErrors) printf("[0x%08llX] ANOMALY: branch into the middle of an instruction\n", VIRTUAL_ADDRESS);
+            Instruction->AnomalyOccurred = true;
         }
 
         switch (Instruction->Type)
@@ -2145,7 +2151,7 @@ HasSpecialExtension:
                     assert(!X86Instruction->HasSelector);
                     X86Instruction->Segment = SEG_CS;
                 }
-                
+
                 if (Operand1->TargetAddress)
                 {
                     assert(!Instruction->CodeBranch.AddressOffset);
@@ -2171,14 +2177,14 @@ HasSpecialExtension:
                     Instruction->CodeBranch.AddressOffset = (U8)tmpScale;
                     for (i = 0; i < MAX_CODE_REFERENCE_COUNT; i++) Instruction->CodeBranch.Addresses[i] = (U64)X86Instruction->Displacement + (i * tmpScale);
                     Instruction->CodeBranch.Count = i;
-                    Instruction->CodeBranch.IsIndirect = TRUE;
+                    Instruction->CodeBranch.IsIndirect = true;
                     Instruction->CodeBranch.Operand = Operand1;
                 }
                 break;
 
             case ITYPE_CALL:
                 Instruction->Groups |= ITYPE_STACK;
-                Instruction->CodeBranch.IsCall = TRUE;
+                Instruction->CodeBranch.IsCall = true;
                 Operand1->Flags |= OP_ADDRESS;
                 assert(Instruction->OperandCount == 1);
                 if (!(Operand1->Flags & (OP_GLOBAL|OP_FAR)))
@@ -2186,7 +2192,7 @@ HasSpecialExtension:
                     assert(!X86Instruction->HasSelector);
                     X86Instruction->Segment = SEG_CS;
                 }
-                                
+
                 if (Operand1->TargetAddress)
                 {
                     assert(!Instruction->CodeBranch.AddressOffset);
@@ -2199,7 +2205,7 @@ HasSpecialExtension:
                 else if (X86Instruction->HasFullDisplacement &&
                     (X86Instruction->HasBaseRegister != X86Instruction->HasIndexRegister))
                 {
-                    //DISASM_OUTPUT(("[0x%08I64X] Scale %d, displacement 0x%08I64x\n", VIRTUAL_ADDRESS, X86Instruction->Scale, X86Instruction->Displacement));
+                    //DISASM_OUTPUT(("[0x%08llX] Scale %d, displacement 0x%08I64x\n", VIRTUAL_ADDRESS, X86Instruction->Scale, X86Instruction->Displacement));
                     if (!X86Instruction->Scale)
                     {
                         assert(Operand1->Length <= 0xFF);
@@ -2213,7 +2219,7 @@ HasSpecialExtension:
                     assert(X86Instruction->Scale > 1);
                     for (i = 0; i < MAX_CODE_REFERENCE_COUNT; i++) Instruction->CodeBranch.Addresses[i] = (U64)X86Instruction->Displacement + (i * tmpScale);
                     Instruction->CodeBranch.Count = i;
-                    Instruction->CodeBranch.IsIndirect = TRUE;
+                    Instruction->CodeBranch.IsIndirect = true;
                     Instruction->CodeBranch.Operand = Operand1;
                 }
                 break;
@@ -2239,7 +2245,7 @@ HasSpecialExtension:
                 break;
 
             case ITYPE_LOOPCC:
-                Instruction->CodeBranch.IsLoop = TRUE;
+                Instruction->CodeBranch.IsLoop = true;
                 assert(Instruction->OperandCount == 1);
                 assert(Operand1->Flags & OP_ADDRESS);
                 assert(Operand1->Type == OPTYPE_OFFSET);
@@ -2275,7 +2281,7 @@ HasSpecialExtension:
                     Instruction->DataDst.Addresses[0] = Operand->TargetAddress;
                     Instruction->DataDst.DataSize = Operand->Length;
                     Instruction->DataDst.Operand = Operand;
-                    DISASM_OUTPUT(("[0x%08I64X] Write of size %d to 0x%04I64X\n", VIRTUAL_ADDRESS, Operand->Length, Operand->TargetAddress));
+                    DISASM_OUTPUT(("[0x%08llX] Write of size %d to 0x%04llX\n", VIRTUAL_ADDRESS, Operand->Length, Operand->TargetAddress));
                 }
                 if (Operand->Flags & OP_SRC)
                 {
@@ -2284,16 +2290,16 @@ HasSpecialExtension:
                     Instruction->DataSrc.Addresses[0] = Operand->TargetAddress;
                     Instruction->DataSrc.DataSize = Operand->Length;
                     Instruction->DataSrc.Operand = Operand;
-                    DISASM_OUTPUT(("[0x%08I64X] Read of size %d to 0x%04I64X\n", VIRTUAL_ADDRESS, Operand->Length, Operand->TargetAddress));
+                    DISASM_OUTPUT(("[0x%08llX] Read of size %d to 0x%04llX\n", VIRTUAL_ADDRESS, Operand->Length, Operand->TargetAddress));
                 }
             }
 
             // If there is both a base and index register, the Result will probably be too wrong
             // to even guess
-            else if (Operand->Flags & OP_GLOBAL && 
+            else if (Operand->Flags & OP_GLOBAL &&
                 (X86Instruction->HasBaseRegister != X86Instruction->HasIndexRegister))
             {
-                DISASM_OUTPUT(("[0x%08I64X] Data reference (scale %d, size %d, displacement 0x%08I64x)\n", VIRTUAL_ADDRESS, X86Instruction->Scale, Operand->Length, X86Instruction->Displacement));
+                DISASM_OUTPUT(("[0x%08llX] Data reference (scale %d, size %d, displacement 0x%08I64x)\n", VIRTUAL_ADDRESS, X86Instruction->Scale, Operand->Length, X86Instruction->Displacement));
                 if (!X86Instruction->Scale)
                 {
                     assert(Operand->Length <= 0xFF);
@@ -2312,7 +2318,7 @@ HasSpecialExtension:
                     Instruction->DataDst.Count = i;
                     Instruction->DataDst.DataSize = Operand->Length;
                     Instruction->DataDst.Operand = Operand;
-                }                   
+                }
                 if (Operand->Flags & OP_SRC)
                 {
                     assert(!Instruction->DataSrc.Count);
@@ -2353,15 +2359,15 @@ HasSpecialExtension:
                 SANITY_CHECK_ADDRESS_SIZE();
                 break;
 
-            case ITYPE_PUSHF:           
+            case ITYPE_PUSHF:
                 Instruction->StackChange = -Operand1->Length;
-                Instruction->NeedsEmulation = TRUE;
+                Instruction->NeedsEmulation = true;
                 SANITY_CHECK_ADDRESS_SIZE();
                 break;
 
             case ITYPE_POPF:
                 Instruction->StackChange = Operand1->Length;
-                Instruction->NeedsEmulation = TRUE;
+                Instruction->NeedsEmulation = true;
                 SANITY_CHECK_ADDRESS_SIZE();
                 break;
 
@@ -2370,13 +2376,13 @@ HasSpecialExtension:
                 {
                     if (Instruction->Operands[1].Value_U64 & 3)
                     {
-                        if (!SuppressErrors) printf("[0x%08I64X] ANOMALY: ENTER has invalid operand 2\n", VIRTUAL_ADDRESS);
-                        Instruction->AnomalyOccurred = TRUE;
+                        if (!SuppressErrors) printf("[0x%08llX] ANOMALY: ENTER has invalid operand 2\n", VIRTUAL_ADDRESS);
+                        Instruction->AnomalyOccurred = true;
                     }
                     if (Instruction->Operands[2].Value_U64 & ~0x1F)
                     {
-                        if (!SuppressErrors) printf("[0x%08I64X] ANOMALY: ENTER has invalid operand 3\n", VIRTUAL_ADDRESS);
-                        Instruction->AnomalyOccurred = TRUE;
+                        if (!SuppressErrors) printf("[0x%08llX] ANOMALY: ENTER has invalid operand 3\n", VIRTUAL_ADDRESS);
+                        Instruction->AnomalyOccurred = true;
                     }
                 }
                 SANITY_CHECK_ADDRESS_SIZE();
@@ -2384,7 +2390,7 @@ HasSpecialExtension:
 
                 // frame pointer + stack space
                 i = Operand1->Length + (U32)Instruction->Operands[1].Value_U64;
-                Instruction->StackChange = -((LONG)i);
+                Instruction->StackChange = (uint32_t)(0)-((uint32_t)i);
                 i = (U32)Instruction->Operands[2].Value_U64 * Operand1->Length;
                 Instruction->StackChange -= i;
                 break;
@@ -2410,25 +2416,25 @@ HasSpecialExtension:
                     case 0xC2: // ret with 1 arg
                         if (!Instruction->AnomalyOccurred && (Operand1->Value_U64 & 3))
                         {
-                            if (!SuppressErrors) printf("[0x%08I64X] ANOMALY: ret has invalid operand 1\n", VIRTUAL_ADDRESS);
-                            Instruction->AnomalyOccurred = TRUE;
+                            if (!SuppressErrors) printf("[0x%08llX] ANOMALY: ret has invalid operand 1\n", VIRTUAL_ADDRESS);
+                            Instruction->AnomalyOccurred = true;
                         }
-                        Instruction->StackChange += (LONG)Operand1->Value_U64;
+                        Instruction->StackChange += (uint32_t)Operand1->Value_U64;
                         break;
 
                     case 0xCB: // far ret with no args
                         Instruction->StackChange *= 2; // account for segment
-                        Instruction->StackChange += (LONG)Operand1->Value_U64;
+                        Instruction->StackChange += (uint32_t)Operand1->Value_U64;
                         break;
 
                     case 0xCA: // far ret with 1 arg
                         if (!Instruction->AnomalyOccurred && (Operand1->Value_U64 & 3))
                         {
-                            if (!SuppressErrors) printf("[0x%08I64X] ANOMALY: retf has invalid operand 1\n", VIRTUAL_ADDRESS);
-                            Instruction->AnomalyOccurred = TRUE;
+                            if (!SuppressErrors) printf("[0x%08llX] ANOMALY: retf has invalid operand 1\n", VIRTUAL_ADDRESS);
+                            Instruction->AnomalyOccurred = true;
                         }
                         Instruction->StackChange *= 2; // account for segment
-                        Instruction->StackChange += (LONG)Operand1->Value_U64;
+                        Instruction->StackChange += (uint32_t)Operand1->Value_U64;
                         break;
                 }
                 SANITY_CHECK_ADDRESS_SIZE();
@@ -2436,10 +2442,10 @@ HasSpecialExtension:
 
             case ITYPE_ADD:
             case ITYPE_XCHGADD:
-                if (Instruction->Operands[1].Value_S64) Instruction->StackChange = (LONG)(Instruction->Operands[1].Value_S64);
+                if (Instruction->Operands[1].Value_S64) Instruction->StackChange = (uint32_t)(Instruction->Operands[1].Value_S64);
                 break;
             case ITYPE_SUB:
-                if (Instruction->Operands[1].Value_S64) Instruction->StackChange = (LONG)(-Instruction->Operands[1].Value_S64);
+                if (Instruction->Operands[1].Value_S64) Instruction->StackChange = (uint32_t)(-Instruction->Operands[1].Value_S64);
                 break;
             case ITYPE_MOV:
             case ITYPE_AND:
@@ -2448,8 +2454,8 @@ HasSpecialExtension:
             default:
                 if (!Instruction->AnomalyOccurred)
                 {
-                    if (!SuppressErrors) printf("[0x%08I64X] ANOMALY: Instruction \"%s\" is modifying the stack\n", VIRTUAL_ADDRESS, X86Opcode->Mnemonic);
-                    Instruction->AnomalyOccurred = TRUE;
+                    if (!SuppressErrors) printf("[0x%08llX] ANOMALY: Instruction \"%s\" is modifying the stack\n", VIRTUAL_ADDRESS, X86Opcode->Mnemonic);
+                    Instruction->AnomalyOccurred = true;
                 }
                 break;
         }
@@ -2457,8 +2463,8 @@ HasSpecialExtension:
         if (!Instruction->AnomalyOccurred &&
             ((X86Instruction->OperandSize != 2 && (Instruction->StackChange & 3)) || (Instruction->StackChange & 1)))
         {
-            if (!SuppressErrors) printf("[0x%08I64X] ANOMALY: \"%s\" has invalid stack change 0x%02X\n", VIRTUAL_ADDRESS, X86Opcode->Mnemonic, Instruction->StackChange);
-            Instruction->AnomalyOccurred = TRUE;
+            if (!SuppressErrors) printf("[0x%08llX] ANOMALY: \"%s\" has invalid stack change 0x%02X\n", VIRTUAL_ADDRESS, X86Opcode->Mnemonic, Instruction->StackChange);
+            Instruction->AnomalyOccurred = true;
         }
     }
 
@@ -2474,7 +2480,7 @@ HasSpecialExtension:
             case ITYPE_TRACE:
             case ITYPE_INVALID:
             case ITYPE_OFLOW:
-                Instruction->NeedsEmulation = TRUE;
+                Instruction->NeedsEmulation = true;
                 break;
             default:
                 assert(0);
@@ -2496,25 +2502,25 @@ HasSpecialExtension:
             case ITYPE_IN:
             case ITYPE_OUT:
             default:
-                Instruction->NeedsEmulation = TRUE;
+                Instruction->NeedsEmulation = true;
                 break;
         }
     }
 
     Disassembler->Stage3CountWithDecode++;
-    return TRUE;
+    return true;
 
 abort:
     if (!SuppressErrors)
     {
 #ifdef TEST_DISASM
-        printf("Dump of 0x%04I64X:\n", VIRTUAL_ADDRESS);
-        __try { DumpAsBytes(stdout, Instruction->Address, (ULONG_PTR)VIRTUAL_ADDRESS, 16, TRUE); }
+        printf("Dump of 0x%04llX:\n", VIRTUAL_ADDRESS);
+        __try { DumpAsBytes(stdout, Instruction->Address, (ULONG_PTR)VIRTUAL_ADDRESS, 16, true); }
         __except (GetExceptionCode() == EXCEPTION_ACCESS_VIOLATION ? EXCEPTION_EXECUTE_HANDLER : EXCEPTION_CONTINUE_SEARCH) {}
 #endif
         fflush(stdout);
     }
-    return FALSE;
+    return false;
 }
 
 // Address = address to first byte after the opcode (e.g., first byte of ModR/M byte or
@@ -2526,7 +2532,6 @@ INTERNAL U8 *SetOperands(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
 {
     INSTRUCTION_OPERAND *Operand;
     U32 Index, OperandIndex;
-    S64 Displacement = 0;
     U8 Register;
     U32 OperandFlags, OperandType, AddressMode, Segment;
     U8 Opcode;
@@ -2535,9 +2540,9 @@ INTERNAL U8 *SetOperands(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
     REX_MODRM rex_modrm;
     X86_OPCODE *X86Opcode;
     X86_INSTRUCTION *X86Instruction = &Instruction->X86;
-    BOOL Decode = Flags & DISASM_DECODE;
-    BOOL Disassemble = Flags & DISASM_DISASSEMBLE;
-    BOOL SuppressErrors = Flags & DISASM_SUPPRESSERRORS;
+    bool Decode = Flags & DISASM_DECODE;
+    bool Disassemble = Flags & DISASM_DISASSEMBLE;
+    bool SuppressErrors = Flags & DISASM_SUPPRESSERRORS;
 
     Opcode = Instruction->LastOpcode;
     X86Opcode = &X86Instruction->Opcode;
@@ -2550,7 +2555,7 @@ INTERNAL U8 *SetOperands(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
         rex = X86Instruction->rex;
         SET_REX_MODRM(X86Instruction->rex_modrm, rex, modrm);
         rex_modrm = X86Instruction->rex_modrm;
-        //DISASM_OUTPUT(("[0x%08I64X] ModRM = 0x%02X (mod=%d, reg=%d, rm=%d)\n", VIRTUAL_ADDRESS, X86Instruction->modrm_b, modrm.mod, rex_modrm.reg, rex_modrm.rm));
+        //DISASM_OUTPUT(("[0x%08llX] ModRM = 0x%02X (mod=%d, reg=%d, rm=%d)\n", VIRTUAL_ADDRESS, X86Instruction->modrm_b, modrm.mod, rex_modrm.reg, rex_modrm.rm));
         INSTR_INC(1); // increment Instruction->Length and address
     }
     else
@@ -2565,7 +2570,7 @@ INTERNAL U8 *SetOperands(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
     {
         Operand = &Instruction->Operands[OperandIndex];
         assert(!(Operand->Flags & 0x7F));
-        
+
         OperandFlags = X86Opcode->OperandFlags[OperandIndex] & X86_OPFLAGS_MASK;
         OperandType = X86Opcode->OperandFlags[OperandIndex] & X86_OPTYPE_MASK;
         AddressMode = X86Opcode->OperandFlags[OperandIndex] & X86_AMODE_MASK;
@@ -2843,7 +2848,7 @@ INTERNAL U8 *SetOperands(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
 
             case OPTYPE_REG_xBP:
                 if (!Decode) continue;
-                Operand->Length = X86Instruction->OperandSize; 
+                Operand->Length = X86Instruction->OperandSize;
                 switch (X86Instruction->OperandSize)
                 {
                     case 8: Operand->Register = AMD64_REG_RBP; break;
@@ -2862,7 +2867,7 @@ INTERNAL U8 *SetOperands(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
 
             case OPTYPE_REG_xAX_BIG:
                 if (!Decode) continue;
-                Operand->Length = X86Instruction->OperandSize; 
+                Operand->Length = X86Instruction->OperandSize;
                 switch (X86Instruction->OperandSize)
                 {
                     case 8: Operand->Register = AMD64_REG_RAX; break;
@@ -2880,7 +2885,7 @@ INTERNAL U8 *SetOperands(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
                 continue;
             case OPTYPE_REG_xAX_SMALL:
                 if (!Decode) continue;
-                Operand->Length = X86Instruction->OperandSize >> 1; 
+                Operand->Length = X86Instruction->OperandSize >> 1;
                 switch (X86Instruction->OperandSize)
                 {
                     case 8: Operand->Register = X86_REG_EAX; break;
@@ -2899,7 +2904,7 @@ INTERNAL U8 *SetOperands(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
 
             case OPTYPE_xCX_HI_xBX_LO:
                 if (!Decode) continue;
-                Operand->Length = X86Instruction->OperandSize << 1; 
+                Operand->Length = X86Instruction->OperandSize << 1;
                 if (Disassemble)
                 {
                     switch (X86Instruction->OperandSize)
@@ -2915,7 +2920,7 @@ INTERNAL U8 *SetOperands(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
                 continue;
             case OPTYPE_xDX_HI_xAX_LO:
                 if (!Decode) continue;
-                Operand->Length = X86Instruction->OperandSize << 1; 
+                Operand->Length = X86Instruction->OperandSize << 1;
                 if (Disassemble)
                 {
                     switch (X86Instruction->OperandSize)
@@ -2966,7 +2971,7 @@ INTERNAL U8 *SetOperands(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
 
             case OPTYPE_xFLAGS:
                 if (!Decode) continue;
-                Operand->Length = X86Instruction->OperandSize; 
+                Operand->Length = X86Instruction->OperandSize;
                 Operand->Flags |= OP_REG;
                 switch (X86Instruction->OperandSize)
                 {
@@ -3253,8 +3258,8 @@ INTERNAL U8 *SetOperands(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
                 break;
 
             case OPTYPE_cpu:
-                if (!SuppressErrors) printf("[0x%08I64X] ANOMALY: Undocumented loadall instruction?\n", VIRTUAL_ADDRESS);
-                Instruction->AnomalyOccurred = TRUE;
+                if (!SuppressErrors) printf("[0x%08llX] ANOMALY: Undocumented loadall instruction?\n", VIRTUAL_ADDRESS);
+                Instruction->AnomalyOccurred = true;
                 Operand->Length = 204;
                 //DISASM_OUTPUT(("[SetOperand] OPTYPE_cpu (size 204)\n"));
                 break;
@@ -3292,8 +3297,8 @@ INTERNAL U8 *SetOperands(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
             case OPTYPE_p: // 32-bit or 48-bit pointer depending on operand size
                 if (!Instruction->AnomalyOccurred && X86Instruction->HasSegmentOverridePrefix)
                 {
-                    if (!SuppressErrors) printf("[0x%08I64X] ANOMALY: Segment override used when segment is explicit\n", VIRTUAL_ADDRESS);
-                    Instruction->AnomalyOccurred = TRUE;
+                    if (!SuppressErrors) printf("[0x%08llX] ANOMALY: Segment override used when segment is explicit\n", VIRTUAL_ADDRESS);
+                    Instruction->AnomalyOccurred = true;
                 }
                 switch (X86Instruction->OperandSize)
                 {
@@ -3316,7 +3321,7 @@ INTERNAL U8 *SetOperands(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
 
             case OPTYPE_mw: // a word if the destination operand is memory
                 //DISASM_OUTPUT(("[SetOperand] OPTYPE_mw (size 0)\n"));
-                assert(X86Instruction->HasModRM);       
+                assert(X86Instruction->HasModRM);
                 if (modrm.mod == 3) Operand->Length = X86Instruction->OperandSize; // using register
                 else Operand->Length = 2; // using memory
                 break;
@@ -3429,7 +3434,7 @@ INTERNAL U8 *SetOperands(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
                 assert(Operand->Length == 1);
                 Operand->Flags |= OP_ADDRESS | OP_REG;
                 Operand->Type = OPTYPE_STRING;
-                
+
                 switch (X86Instruction->AddressSize)
                 {
                     case 8: Operand->Register = AMD64_REG_RBX; break;
@@ -3440,14 +3445,14 @@ INTERNAL U8 *SetOperands(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
                 X86_SET_ADDR();
                 X86Instruction->Scale = 1;
                 X86Instruction->BaseRegister = Operand->Register;
-                X86Instruction->HasBaseRegister = TRUE;
+                X86Instruction->HasBaseRegister = true;
                 X86Instruction->IndexRegister = X86_REG_AL;
-                X86Instruction->HasIndexRegister = TRUE;
+                X86Instruction->HasIndexRegister = true;
 
                 //DISASM_OUTPUT(("[SetOperand] AMODE_xlat (DS:[EBX+AL])\n"));
                 if (Disassemble)
                 {
-                    APPEND(OPCSTR, SIZE_LEFT, "%s:[%s]", 
+                    APPEND(OPCSTR, SIZE_LEFT, "%s:[%s]",
                         Segments[X86Instruction->Segment], X86_Registers[Operand->Register]);
                     X86_WRITE_OPFLAGS();
                 }
@@ -3468,7 +3473,7 @@ INTERNAL U8 *SetOperands(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
                             else Operand->Value_U64 = (U64)*((U64 *)Address);
                             break;
                         case 4:
-                            if (!(OperandFlags & OP_SIGNED) && OperandIndex == 1 && 
+                            if (!(OperandFlags & OP_SIGNED) && OperandIndex == 1 &&
                                 (Instruction->Operands[0].Flags & (OP_REG|OP_ADDRESS)) &&
                                 Instruction->Operands[0].Length == 8)
                             {
@@ -3546,15 +3551,15 @@ INTERNAL U8 *SetOperands(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
                         case 2: X86Instruction->Displacement = (S64)*((S16 *)Address); break;
                         case 1: X86Instruction->Displacement = (S64)*((S8 *)Address); break;
                         default: assert(0); return NULL;
-                    }                   
+                    }
 
                     Operand->Value_S64 = X86Instruction->Displacement;
-                    X86Instruction->Relative = TRUE;
+                    X86Instruction->Relative = true;
 
                     if ((Operand->Flags & OP_COND) && !X86Instruction->Displacement)
                     {
-                        if (!SuppressErrors) printf("[0x%08I64X] ANOMALY: Both conditions of branch go to same address\n", VIRTUAL_ADDRESS);
-                        Instruction->AnomalyOccurred = TRUE;
+                        if (!SuppressErrors) printf("[0x%08llX] ANOMALY: Both conditions of branch go to same address\n", VIRTUAL_ADDRESS);
+                        Instruction->AnomalyOccurred = true;
                     }
                 }
 
@@ -3563,13 +3568,13 @@ INTERNAL U8 *SetOperands(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
 
                 assert((Operand->Flags & OP_EXEC) && (Instruction->Groups & ITYPE_EXEC));
                 Operand->TargetAddress = ApplyDisplacement((U64)Address, Instruction);
-                X86Instruction->Relative = TRUE; 
+                X86Instruction->Relative = true;
                 X86_SET_ADDR();
                 SANITY_CHECK_SEGMENT_OVERRIDE();
-                X86Instruction->HasSegmentOverridePrefix = FALSE;
+                X86Instruction->HasSegmentOverridePrefix = false;
                 X86Instruction->Segment = SEG_CS;
                 X86Instruction->BaseRegister = Operand->Register;
-                X86Instruction->HasBaseRegister = TRUE;
+                X86Instruction->HasBaseRegister = true;
                 assert(Instruction->OperandCount == 1);
                 //DISASM_OUTPUT(("[SetOperand] AMODE_J (branch with relative offset)\n"));
                 if (Disassemble)
@@ -3599,13 +3604,13 @@ INTERNAL U8 *SetOperands(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
                         break;
                     default:
                         assert(0);
-                        return FALSE;
+                        return false;
                 }
 
                 INSTR_INC(X86Instruction->AddressSize); // increment Instruction->Length and address
                 if (!Decode) continue;
 
-                X86Instruction->HasFullDisplacement = TRUE;
+                X86Instruction->HasFullDisplacement = true;
                 X86_SET_ADDR();
                 X86_SET_TARGET();
                 assert(X86Instruction->Segment == SEG_DS || X86Instruction->HasSegmentOverridePrefix);
@@ -3621,8 +3626,8 @@ INTERNAL U8 *SetOperands(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
                 Operand->Flags |= OP_ADDRESS | OP_FAR;
                 SANITY_CHECK_ADDRESS_SIZE();
                 SANITY_CHECK_SEGMENT_OVERRIDE();
-                X86Instruction->HasSelector = TRUE;
-                X86Instruction->HasSegmentOverridePrefix = FALSE;
+                X86Instruction->HasSelector = true;
+                X86Instruction->HasSegmentOverridePrefix = false;
                 switch (Operand->Length)
                 {
                     case 6:
@@ -3635,10 +3640,10 @@ INTERNAL U8 *SetOperands(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
                         break;
                     default:
                         assert(0);
-                        return FALSE;
+                        return false;
                 }
                 if (!Decode) continue;
-                X86Instruction->HasFullDisplacement = TRUE;
+                X86Instruction->HasFullDisplacement = true;
                 X86_SET_ADDR();
                 X86_SET_TARGET();
                 //DISASM_OUTPUT(("[SetOperand] AMODE_A (absolute address)\n"));
@@ -3662,14 +3667,14 @@ INTERNAL U8 *SetOperands(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
                 }
 
                 X86Instruction->BaseRegister = Operand->Register;
-                X86Instruction->HasBaseRegister = TRUE;
+                X86Instruction->HasBaseRegister = true;
                 X86_SET_ADDR();
                 if (!X86Instruction->HasSegmentOverridePrefix) X86Instruction->Segment = SEG_DS;
 
                 //DISASM_OUTPUT(("[SetOperand] AMODE_X (addressing via DS:[ESI])\n"));
                 if (Disassemble)
                 {
-                    APPEND(OPCSTR, SIZE_LEFT, "%s:[%s]", 
+                    APPEND(OPCSTR, SIZE_LEFT, "%s:[%s]",
                         Segments[X86Instruction->Segment], X86_Registers[Operand->Register]);
                     X86_WRITE_OPFLAGS();
                 }
@@ -3688,17 +3693,17 @@ INTERNAL U8 *SetOperands(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
                 }
 
                 X86Instruction->BaseRegister = Operand->Register;
-                X86Instruction->HasBaseRegister = TRUE;
+                X86Instruction->HasBaseRegister = true;
                 X86_SET_ADDR();
                 if (X86Instruction->HasSegmentOverridePrefix)
                 {
                     if (!Instruction->AnomalyOccurred)
                     {
-                        if (!SuppressErrors) printf("[0x%08I64X] ANOMALY: segment override used with AMODE_Y\n", VIRTUAL_ADDRESS);
-                        Instruction->AnomalyOccurred = TRUE;
+                        if (!SuppressErrors) printf("[0x%08llX] ANOMALY: segment override used with AMODE_Y\n", VIRTUAL_ADDRESS);
+                        Instruction->AnomalyOccurred = true;
                     }
                     Segment = X86Instruction->DstSegment = SEG_ES;
-                    X86Instruction->HasDstSegment = TRUE;
+                    X86Instruction->HasDstSegment = true;
                 }
                 else
                 {
@@ -3708,12 +3713,12 @@ INTERNAL U8 *SetOperands(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
                 //DISASM_OUTPUT(("[SetOperand] AMODE_Y (addressing via ES:[EDI])\n"));
                 if (Disassemble)
                 {
-                    APPEND(OPCSTR, SIZE_LEFT, "%s:[%s]", 
+                    APPEND(OPCSTR, SIZE_LEFT, "%s:[%s]",
                         Segments[Segment], X86_Registers[Operand->Register]);
                     X86_WRITE_OPFLAGS();
                 }
                 continue;
-            
+
             ////////////////////////////////////////////////////////////
             // Mod R/M byte with only registers
             // Handle that case here since it is straightforward
@@ -3723,17 +3728,17 @@ INTERNAL U8 *SetOperands(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
                 assert(X86Instruction->HasModRM);
                 if (modrm.mod != 3)
                 {
-                    if (!SuppressErrors) printf("[0x%08I64X] ERROR: mod != 3 for AMODE_PR (\"%s\")\n", VIRTUAL_ADDRESS, X86Instruction->Opcode.Mnemonic);
+                    if (!SuppressErrors) printf("[0x%08llX] ERROR: mod != 3 for AMODE_PR (\"%s\")\n", VIRTUAL_ADDRESS, X86Instruction->Opcode.Mnemonic);
                     goto abort;
                 }
                 else if (rex_modrm.rm > 7)
                 {
-                    if (!SuppressErrors) printf("[0x%08I64X] ERROR: invalid mmx register %d for AMODE_PR (\"%s\")\n", VIRTUAL_ADDRESS, rex_modrm.rm, X86Instruction->Opcode.Mnemonic);
+                    if (!SuppressErrors) printf("[0x%08llX] ERROR: invalid mmx register %d for AMODE_PR (\"%s\")\n", VIRTUAL_ADDRESS, rex_modrm.rm, X86Instruction->Opcode.Mnemonic);
                     goto abort;
                 }
                 else if (X86Instruction->OperandSize == 2)
                 {
-                    if (!SuppressErrors) printf("[0x%08I64X] ERROR: AMODE_PR illegal in 16-bit mode (\"%s\")\n", VIRTUAL_ADDRESS, X86Instruction->Opcode.Mnemonic);
+                    if (!SuppressErrors) printf("[0x%08llX] ERROR: AMODE_PR illegal in 16-bit mode (\"%s\")\n", VIRTUAL_ADDRESS, X86Instruction->Opcode.Mnemonic);
                     goto abort;
                 }
                 if (!Decode) continue;
@@ -3755,12 +3760,12 @@ INTERNAL U8 *SetOperands(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
                 assert(X86Instruction->HasModRM);
                 if (modrm.mod != 3)
                 {
-                    if (!SuppressErrors) printf("[0x%08I64X] ERROR: mod != 3 for AMODE_VR (\"%s\")\n", VIRTUAL_ADDRESS, X86Instruction->Opcode.Mnemonic);
+                    if (!SuppressErrors) printf("[0x%08llX] ERROR: mod != 3 for AMODE_VR (\"%s\")\n", VIRTUAL_ADDRESS, X86Instruction->Opcode.Mnemonic);
                     goto abort;
                 }
                 else if (X86Instruction->OperandSize == 2)
                 {
-                    if (!SuppressErrors) printf("[0x%08I64X] ERROR: AMODE_VR illegal in 16-bit mode (\"%s\")\n", VIRTUAL_ADDRESS, X86Instruction->Opcode.Mnemonic);
+                    if (!SuppressErrors) printf("[0x%08llX] ERROR: AMODE_VR illegal in 16-bit mode (\"%s\")\n", VIRTUAL_ADDRESS, X86Instruction->Opcode.Mnemonic);
                     goto abort;
                 }
                 if (!Decode) continue;
@@ -3781,12 +3786,12 @@ INTERNAL U8 *SetOperands(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
                 assert(X86Instruction->HasModRM);
                 if (rex_modrm.reg > 7)
                 {
-                    if (!SuppressErrors) printf("[0x%08I64X] ERROR: invalid mmx register %d for AMODE_P (\"%s\")\n", VIRTUAL_ADDRESS, rex_modrm.reg, X86Instruction->Opcode.Mnemonic);
+                    if (!SuppressErrors) printf("[0x%08llX] ERROR: invalid mmx register %d for AMODE_P (\"%s\")\n", VIRTUAL_ADDRESS, rex_modrm.reg, X86Instruction->Opcode.Mnemonic);
                     goto abort;
                 }
                 else if (X86Instruction->OperandSize == 2)
                 {
-                    if (!SuppressErrors) printf("[0x%08I64X] ERROR: AMODE_P illegal in 16-bit mode (\"%s\")\n", VIRTUAL_ADDRESS, X86Instruction->Opcode.Mnemonic);
+                    if (!SuppressErrors) printf("[0x%08llX] ERROR: AMODE_P illegal in 16-bit mode (\"%s\")\n", VIRTUAL_ADDRESS, X86Instruction->Opcode.Mnemonic);
                     goto abort;
                 }
                 if (!Decode) continue;
@@ -3807,7 +3812,7 @@ INTERNAL U8 *SetOperands(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
                 assert(X86Instruction->HasModRM);
                 if (X86Instruction->OperandSize == 2)
                 {
-                    if (!SuppressErrors) printf("[0x%08I64X] ERROR: AMODE_P illegal in 16-bit mode (\"%s\")\n", VIRTUAL_ADDRESS, X86Instruction->Opcode.Mnemonic);
+                    if (!SuppressErrors) printf("[0x%08llX] ERROR: AMODE_P illegal in 16-bit mode (\"%s\")\n", VIRTUAL_ADDRESS, X86Instruction->Opcode.Mnemonic);
                     goto abort;
                 }
                 if (!Decode) continue;
@@ -3828,7 +3833,7 @@ INTERNAL U8 *SetOperands(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
                 assert(X86Instruction->HasModRM);
                 if (modrm.mod != 3)
                 {
-                    if (!SuppressErrors) printf("[0x%08I64X] ERROR: mod != 3 for AMODE_R (\"%s\")\n", VIRTUAL_ADDRESS, X86Instruction->Opcode.Mnemonic);
+                    if (!SuppressErrors) printf("[0x%08llX] ERROR: mod != 3 for AMODE_R (\"%s\")\n", VIRTUAL_ADDRESS, X86Instruction->Opcode.Mnemonic);
                     goto abort;
                 }
                 if (!Decode) continue;
@@ -3836,9 +3841,9 @@ INTERNAL U8 *SetOperands(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
                 switch (Operand->Length)
                 {
                     case 8: Operand->Register = AMD64_64BIT_OFFSET + rex_modrm.rm; break;
-                    case 4: Operand->Register = X86_32BIT_OFFSET, rex_modrm.rm; CHECK_AMD64_REG(); break;
-                    case 2: Operand->Register = X86_16BIT_OFFSET, rex_modrm.rm; CHECK_AMD64_REG(); break;
-                    case 1: Operand->Register = X86_8BIT_OFFSET, rex_modrm.rm; if (X86Instruction->rex_b) CHECK_AMD64_REG(); break;
+                    case 4: Operand->Register = X86_32BIT_OFFSET + rex_modrm.rm; CHECK_AMD64_REG(); break;
+                    case 2: Operand->Register = X86_16BIT_OFFSET + rex_modrm.rm; CHECK_AMD64_REG(); break;
+                    case 1: Operand->Register = X86_8BIT_OFFSET + rex_modrm.rm; if (X86Instruction->rex_b) CHECK_AMD64_REG(); break;
                     default: assert(0); return NULL;
                 }
                 X86_SET_REG(rex_modrm.rm);
@@ -3870,7 +3875,7 @@ INTERNAL U8 *SetOperands(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
                 }
                 //DISASM_OUTPUT(("[SetOperand] AMODE_G (general register)\n"));
                 continue;
-            
+
             case AMODE_S: // modrm.reg = segment register
                 assert(X86Instruction->HasModRM);
                 if (!Decode) continue;
@@ -3901,7 +3906,7 @@ INTERNAL U8 *SetOperands(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
                 assert(X86Instruction->HasModRM);
                 if (!Decode) continue;
                 Instruction->Groups |= ITYPE_SYSTEM;
-                Instruction->NeedsEmulation = TRUE;
+                Instruction->NeedsEmulation = true;
                 Operand->Flags |= OP_REG;
                 switch (X86Instruction->OperandSize)
                 {
@@ -3929,7 +3934,7 @@ INTERNAL U8 *SetOperands(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
                 assert(Instruction->Type == ITYPE_MOV);
                 if (!Decode) continue;
                 Instruction->Groups |= ITYPE_SYSTEM;
-                Instruction->NeedsEmulation = TRUE;
+                Instruction->NeedsEmulation = true;
                 Operand->Flags |= OP_REG;
                 if (IS_AMD64()) X86Instruction->OperandSize = 8;
                 switch (X86Instruction->OperandSize)
@@ -3957,10 +3962,10 @@ INTERNAL U8 *SetOperands(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
                 assert(X86Instruction->HasModRM);
                 assert(Instruction->Type == ITYPE_MOV);
                 if (!Decode) continue;
-                Instruction->NeedsEmulation = TRUE;
+                Instruction->NeedsEmulation = true;
                 Operand->Flags |= OP_REG;
                 Instruction->Groups |= ITYPE_SYSTEM;
-                Instruction->NeedsEmulation = TRUE;
+                Instruction->NeedsEmulation = true;
                 if (IS_AMD64()) X86Instruction->OperandSize = 8;
                 switch (X86Instruction->OperandSize)
                 {
@@ -3991,7 +3996,7 @@ INTERNAL U8 *SetOperands(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
                 assert(X86Instruction->HasModRM);
                 if (modrm.mod == 3)
                 {
-                    if (!SuppressErrors) printf("[0x%08I64X] ERROR: mod = 3 for AMODE_M (\"%s\")\n", VIRTUAL_ADDRESS, X86Instruction->Opcode.Mnemonic);
+                    if (!SuppressErrors) printf("[0x%08llX] ERROR: mod = 3 for AMODE_M (\"%s\")\n", VIRTUAL_ADDRESS, X86Instruction->Opcode.Mnemonic);
                     goto abort;
                 }
                 assert(X86Instruction->Segment == SEG_DS || X86Instruction->HasSegmentOverridePrefix);
@@ -4004,7 +4009,7 @@ INTERNAL U8 *SetOperands(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
                 assert(X86Instruction->HasModRM);
                 if (OperandType == OPTYPE_p && modrm.mod == 3)
                 {
-                    if (!SuppressErrors) printf("[0x%08I64X] ERROR: mod = 3 for AMODE_E with OPTYPE_p (\"%s\")\n", VIRTUAL_ADDRESS, X86Instruction->Opcode.Mnemonic);
+                    if (!SuppressErrors) printf("[0x%08llX] ERROR: mod = 3 for AMODE_E with OPTYPE_p (\"%s\")\n", VIRTUAL_ADDRESS, X86Instruction->Opcode.Mnemonic);
                     goto abort;
                 }
 
@@ -4025,7 +4030,7 @@ INTERNAL U8 *SetOperands(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
                 {
                     if (rex_modrm.rm > 7)
                     {
-                        if (!SuppressErrors) printf("[0x%08I64X] ERROR: invalid mmx register %d for AMODE_P (\"%s\")\n", VIRTUAL_ADDRESS, rex_modrm.rm, X86Instruction->Opcode.Mnemonic);
+                        if (!SuppressErrors) printf("[0x%08llX] ERROR: invalid mmx register %d for AMODE_P (\"%s\")\n", VIRTUAL_ADDRESS, rex_modrm.rm, X86Instruction->Opcode.Mnemonic);
                         goto abort;
                     }
                     Operand->Register = X86_MMX_OFFSET + rex_modrm.rm;
@@ -4094,8 +4099,8 @@ abort:
     if (!SuppressErrors)
     {
 #ifdef TEST_DISASM
-        printf("Dump of 0x%04I64X:\n", VIRTUAL_ADDRESS);
-        __try { DumpAsBytes(stdout, Instruction->Address, (ULONG_PTR)VIRTUAL_ADDRESS, 16, TRUE); }
+        printf("Dump of 0x%04llX:\n", VIRTUAL_ADDRESS);
+        __try { DumpAsBytes(stdout, Instruction->Address, (ULONG_PTR)VIRTUAL_ADDRESS, 16, true); }
         __except (GetExceptionCode() == EXCEPTION_ACCESS_VIOLATION ? EXCEPTION_EXECUTE_HANDLER : EXCEPTION_CONTINUE_SEARCH) {}
 #endif
         fflush(stdout);
@@ -4104,7 +4109,7 @@ abort:
 }
 
 // NOTE: Address points one byte after ModRM
-INTERNAL U8 *SetModRM16(INSTRUCTION *Instruction, U8 *Address, INSTRUCTION_OPERAND *Operand, U32 OperandIndex, BOOL SuppressErrors)
+INTERNAL U8 *SetModRM16(INSTRUCTION *Instruction, U8 *Address, INSTRUCTION_OPERAND *Operand, U32 OperandIndex, bool SuppressErrors)
 {
     MODRM modrm;
     X86_INSTRUCTION *X86Instruction = &Instruction->X86;
@@ -4130,7 +4135,7 @@ INTERNAL U8 *SetModRM16(INSTRUCTION *Instruction, U8 *Address, INSTRUCTION_OPERA
         Operand->Flags |= OP_REG;
     }
 
-    // 
+    //
     // Address is an absolute address (technically a 16-bit offset from DS:0)
     // Condition: mod = 0 and rm = 6
     //
@@ -4140,7 +4145,7 @@ INTERNAL U8 *SetModRM16(INSTRUCTION *Instruction, U8 *Address, INSTRUCTION_OPERA
         X86Instruction->Displacement = (S64)(*((S16 *)Address));
         if (IS_VALID_ADDRESS(X86Instruction->Displacement))
         {
-            X86Instruction->HasFullDisplacement = TRUE;
+            X86Instruction->HasFullDisplacement = true;
             X86_SET_TARGET();
             Operand->Flags |= OP_GLOBAL;
         }
@@ -4158,7 +4163,7 @@ INTERNAL U8 *SetModRM16(INSTRUCTION *Instruction, U8 *Address, INSTRUCTION_OPERA
         {
             case 0: // no displacement
                 //DISASM_OUTPUT(("[SetModRM16] Indirect addressing (no displacement)\n"));
-                break; 
+                break;
             case 1: // 8-bit signed displacement
                 //DISASM_OUTPUT(("[SetModRM16] Indirect addressing (displacement = 0x%02X, reg_rm = %d)\n", *(S8 *)Address, modrm.rm));
                 X86Instruction->Displacement = (S64)(*((S8 *)Address));
@@ -4170,7 +4175,7 @@ INTERNAL U8 *SetModRM16(INSTRUCTION *Instruction, U8 *Address, INSTRUCTION_OPERA
                 if (IS_VALID_ADDRESS(X86Instruction->Displacement))
                 {
                     Operand->Flags |= OP_GLOBAL;
-                    X86Instruction->HasFullDisplacement = TRUE;
+                    X86Instruction->HasFullDisplacement = true;
                 }
                 INSTR_INC(2);
                 break;
@@ -4182,26 +4187,26 @@ INTERNAL U8 *SetModRM16(INSTRUCTION *Instruction, U8 *Address, INSTRUCTION_OPERA
                 //DISASM_OUTPUT(("[SetModRM16] Addressing mode [BX+SI]\n"));
                 X86Instruction->BaseRegister = X86_REG_BX;
                 X86Instruction->IndexRegister = X86_REG_SI;
-                X86Instruction->HasIndexRegister = TRUE;
+                X86Instruction->HasIndexRegister = true;
                 break;
             case 1:
                 //DISASM_OUTPUT(("[SetModRM16] Addressing mode [BX+DI]\n"));
                 X86Instruction->BaseRegister = X86_REG_BX;
                 X86Instruction->IndexRegister = X86_REG_DI;
-                X86Instruction->HasIndexRegister = TRUE;
+                X86Instruction->HasIndexRegister = true;
                 break;
             case 2:
                 //DISASM_OUTPUT(("[SetModRM16] Addressing mode [BP+SI]\n"));
                 X86Instruction->BaseRegister = X86_REG_BP;
                 X86Instruction->IndexRegister = X86_REG_SI;
-                X86Instruction->HasIndexRegister = TRUE;
+                X86Instruction->HasIndexRegister = true;
                 X86_SET_SEG(REG_BP);
                 break;
             case 3:
                 //DISASM_OUTPUT(("[SetModRM16] Addressing mode [BP+DI]\n"));
                 X86Instruction->BaseRegister = X86_REG_BP;
                 X86Instruction->IndexRegister = X86_REG_DI;
-                X86Instruction->HasIndexRegister = TRUE;
+                X86Instruction->HasIndexRegister = true;
                 X86_SET_SEG(REG_BP);
                 break;
             case 4:
@@ -4222,7 +4227,7 @@ INTERNAL U8 *SetModRM16(INSTRUCTION *Instruction, U8 *Address, INSTRUCTION_OPERA
                 break;
         }
 
-        X86Instruction->HasBaseRegister = TRUE;
+        X86Instruction->HasBaseRegister = true;
         Operand->Flags |= OP_ADDRESS | OP_REG;
         X86_SET_ADDR();
     }
@@ -4231,7 +4236,7 @@ INTERNAL U8 *SetModRM16(INSTRUCTION *Instruction, U8 *Address, INSTRUCTION_OPERA
 }
 
 // NOTE: Address points one byte after ModRM
-INTERNAL U8 *SetModRM32(INSTRUCTION *Instruction, U8 *Address, INSTRUCTION_OPERAND *Operand, U32 OperandIndex, BOOL SuppressErrors)
+INTERNAL U8 *SetModRM32(INSTRUCTION *Instruction, U8 *Address, INSTRUCTION_OPERAND *Operand, U32 OperandIndex, bool SuppressErrors)
 {
     MODRM modrm;
     REX_MODRM rex_modrm;
@@ -4265,13 +4270,13 @@ INTERNAL U8 *SetModRM32(INSTRUCTION *Instruction, U8 *Address, INSTRUCTION_OPERA
         Operand->Flags |= OP_REG;
     }
 
-    // 
+    //
     // Address is an absolute address (technically a 32-bit offset from DS:0)
     // mod = 0 and rm = 5
     //
     else if (modrm.mod == 0 && modrm.rm == 5)
     {
-        //DISASM_OUTPUT(("[SetModRM32] Absolute addressing (displacement 0x%08lX)\n", *(S32 *)Address));
+        //DISASM_OUTPUT(("[SetModRM32] Absolute addressing (displacement 0x%08X)\n", *(S32 *)Address));
         Operand->Flags |= OP_ADDRESS;
         X86Instruction->Displacement = (S64)*((S32 *)Address);
         INSTR_INC(4); // increment Instruction->Length and address
@@ -4288,12 +4293,12 @@ INTERNAL U8 *SetModRM32(INSTRUCTION *Instruction, U8 *Address, INSTRUCTION_OPERA
                 default: assert(0); return NULL;
             }
             X86Instruction->BaseRegister = Operand->Register;
-            X86Instruction->HasBaseRegister = TRUE;
-            X86Instruction->Relative = TRUE;
+            X86Instruction->HasBaseRegister = true;
+            X86Instruction->Relative = true;
             Operand->Flags |= OP_IPREL | OP_SIGNED | OP_REG;
             SANITY_CHECK_SEGMENT_OVERRIDE();
             if (!X86Instruction->HasSegmentOverridePrefix) X86Instruction->Segment = SEG_CS;
-            X86Instruction->HasFullDisplacement = TRUE;
+            X86Instruction->HasFullDisplacement = true;
 
             // Since there may be an immediate value to follow, it is necessary
             // to determine the length in order get the proper offset
@@ -4339,7 +4344,7 @@ INTERNAL U8 *SetModRM32(INSTRUCTION *Instruction, U8 *Address, INSTRUCTION_OPERA
         {
             X86_SET_TARGET();
             Operand->Flags |= OP_GLOBAL;
-            X86Instruction->HasFullDisplacement = TRUE;
+            X86Instruction->HasFullDisplacement = true;
         }
 
         X86_SET_ADDR();
@@ -4369,16 +4374,16 @@ INTERNAL U8 *SetModRM32(INSTRUCTION *Instruction, U8 *Address, INSTRUCTION_OPERA
                     INSTR_INC(1); // increment Instruction->Length and address
                     break;
                 case 2: // 32-bit displacement
-                    //DISASM_OUTPUT(("[SetModRM32] After SIB: displacement 0x%08lX\n", *((S32 *)Address)));
+                    //DISASM_OUTPUT(("[SetModRM32] After SIB: displacement 0x%08X\n", *((S32 *)Address)));
                     X86Instruction->Displacement = (S64)*((S32 *)Address);
                     if (IS_VALID_ADDRESS(X86Instruction->Displacement))
                     {
                         Operand->Flags |= OP_GLOBAL;
-                        X86Instruction->HasFullDisplacement = TRUE;
+                        X86Instruction->HasFullDisplacement = true;
                     }
                     INSTR_INC(4); // increment Instruction->Length and address
                     break;
-            }   
+            }
         }
     }
 
@@ -4395,7 +4400,7 @@ INTERNAL U8 *SetModRM32(INSTRUCTION *Instruction, U8 *Address, INSTRUCTION_OPERA
             default: assert(0); return NULL;
         }
         X86Instruction->BaseRegister = Operand->Register;
-        X86Instruction->HasBaseRegister = TRUE;
+        X86Instruction->HasBaseRegister = true;
         Operand->Flags |= OP_ADDRESS | OP_REG;
         X86_SET_SEG(rex_modrm.rm);
         X86_SET_ADDR();
@@ -4404,19 +4409,19 @@ INTERNAL U8 *SetModRM32(INSTRUCTION *Instruction, U8 *Address, INSTRUCTION_OPERA
         {
             case 0: // no displacement
                 //DISASM_OUTPUT(("[SetModRM32] Indirect addressing (no displacement, reg_rm = %d)\n", rex_modrm.rm));
-                break; 
+                break;
             case 1: // 8-bit signed displacement
                 //DISASM_OUTPUT(("[SetModRM32] Indirect addressing (displacement = 0x%02X, reg_rm = %d)\n", *(S8 *)Address, rex_modrm.rm));
                 X86Instruction->Displacement = (S64)(*((S8 *)Address));
                 INSTR_INC(1); // increment Instruction->Length and address
                 break;
             case 2: // 32-bit displacement
-                //DISASM_OUTPUT(("[SetModRM32] Indirect addressing (displacement = 0x%08lX, reg_rm = %d)\n", *(S32 *)Address, rex_modrm.rm));
+                //DISASM_OUTPUT(("[SetModRM32] Indirect addressing (displacement = 0x%08X, reg_rm = %d)\n", *(S32 *)Address, rex_modrm.rm));
                 X86Instruction->Displacement = (S64)*((S32 *)Address);
                 if (IS_VALID_ADDRESS(X86Instruction->Displacement))
                 {
                     Operand->Flags |= OP_GLOBAL;
-                    X86Instruction->HasFullDisplacement = TRUE;
+                    X86Instruction->HasFullDisplacement = true;
                 }
                 INSTR_INC(4); // increment Instruction->Length and address
                 break;
@@ -4427,7 +4432,7 @@ INTERNAL U8 *SetModRM32(INSTRUCTION *Instruction, U8 *Address, INSTRUCTION_OPERA
 }
 
 // NOTE: Address points at SIB
-INTERNAL U8 *SetSIB(INSTRUCTION *Instruction, U8 *Address, INSTRUCTION_OPERAND *Operand, U32 OperandIndex, BOOL SuppressErrors)
+INTERNAL U8 *SetSIB(INSTRUCTION *Instruction, U8 *Address, INSTRUCTION_OPERAND *Operand, U32 OperandIndex, bool SuppressErrors)
 {
     REX rex;
     SIB sib;
@@ -4441,8 +4446,8 @@ INTERNAL U8 *SetSIB(INSTRUCTION *Instruction, U8 *Address, INSTRUCTION_OPERAND *
     SET_REX_SIB(X86Instruction->rex_sib, rex, sib);
     rex_sib = X86Instruction->rex_sib;
 
-    //if (!X86Instruction->rex_b) DISASM_OUTPUT(("[0x%08I64X] SIB = 0x%02X (scale=%d, index=%d, base=%d)\n", VIRTUAL_ADDRESS, *Address, sib.scale, sib.index, sib.base)); \
-    //else DISASM_OUTPUT(("[0x%08I64X] SIB = 0x%02X (scale=%d, index=%d, base=%d)\n", VIRTUAL_ADDRESS, *Address, sib.scale, rex_sib.index, rex_sib.base)); \
+    //if (!X86Instruction->rex_b) DISASM_OUTPUT(("[0x%08llX] SIB = 0x%02X (scale=%d, index=%d, base=%d)\n", VIRTUAL_ADDRESS, *Address, sib.scale, sib.index, sib.base)); \
+    //else DISASM_OUTPUT(("[0x%08llX] SIB = 0x%02X (scale=%d, index=%d, base=%d)\n", VIRTUAL_ADDRESS, *Address, sib.scale, rex_sib.index, rex_sib.base)); \
     //DISASM_OUTPUT(("[SetSIB] Current instruction length = %d\n", Instruction->Length));
 
     Operand->Flags |= OP_ADDRESS;
@@ -4457,7 +4462,7 @@ INTERNAL U8 *SetSIB(INSTRUCTION *Instruction, U8 *Address, INSTRUCTION_OPERAND *
                 X86Instruction->Displacement = (S64)*((S32 *)Address);
                 if (IS_VALID_ADDRESS(X86Instruction->Displacement))
                 {
-                    X86Instruction->HasFullDisplacement = TRUE;
+                    X86Instruction->HasFullDisplacement = true;
                     X86_SET_TARGET();
                     Operand->Flags |= OP_GLOBAL;
                 }
@@ -4481,7 +4486,7 @@ INTERNAL U8 *SetSIB(INSTRUCTION *Instruction, U8 *Address, INSTRUCTION_OPERAND *
                 }
 
                 X86Instruction->BaseRegister = Operand->Register;
-                X86Instruction->HasBaseRegister = TRUE;
+                X86Instruction->HasBaseRegister = true;
                 Operand->Flags |= OP_REG;
                 INSTR_INC(1);
                 break;
@@ -4505,10 +4510,10 @@ INTERNAL U8 *SetSIB(INSTRUCTION *Instruction, U8 *Address, INSTRUCTION_OPERAND *
                 if (IS_VALID_ADDRESS(X86Instruction->Displacement))
                 {
                     Operand->Flags |= OP_GLOBAL;
-                    X86Instruction->HasFullDisplacement = TRUE;
+                    X86Instruction->HasFullDisplacement = true;
                 }
                 X86Instruction->BaseRegister = Operand->Register;
-                X86Instruction->HasBaseRegister = TRUE;
+                X86Instruction->HasBaseRegister = true;
                 Operand->Flags |= OP_REG;
                 INSTR_INC(4);
                 break;
@@ -4523,7 +4528,7 @@ INTERNAL U8 *SetSIB(INSTRUCTION *Instruction, U8 *Address, INSTRUCTION_OPERAND *
             default: assert(0); return NULL;
         }
         X86Instruction->BaseRegister = Operand->Register;
-        X86Instruction->HasBaseRegister = TRUE;
+        X86Instruction->HasBaseRegister = true;
         X86_SET_SEG(rex_sib.base);
         Operand->Flags |= OP_REG;
     }
@@ -4545,7 +4550,7 @@ INTERNAL U8 *SetSIB(INSTRUCTION *Instruction, U8 *Address, INSTRUCTION_OPERAND *
         }
 
         Operand->TargetAddress = 0;
-        X86Instruction->HasIndexRegister = TRUE;
+        X86Instruction->HasIndexRegister = true;
         //DISASM_OUTPUT(("[SetSIB] Index register = %s\n", X86_Registers[X86_32BIT_OFFSET + rex_sib.index]));
 
         switch (sib.scale)
@@ -4604,7 +4609,7 @@ INTERNAL U64 ApplyDisplacement(U64 Address, INSTRUCTION *Instruction)
 
 
 
-INTERNAL BOOL IsValidLockPrefix(X86_INSTRUCTION *X86Instruction, U8 Opcode, U32 OpcodeLength, U8 Group, U8 OpcodeExtension)
+INTERNAL bool IsValidLockPrefix(X86_INSTRUCTION *X86Instruction, U8 Opcode, U32 OpcodeLength, U8 Group, U8 OpcodeExtension)
 {
     switch (OpcodeLength)
     {
@@ -4612,16 +4617,16 @@ INTERNAL BOOL IsValidLockPrefix(X86_INSTRUCTION *X86Instruction, U8 Opcode, U32 
             switch (X86_LockPrefix_1[Opcode])
             {
                 case 0: // instruction can't be locked
-                    return FALSE;
+                    return false;
                 case 1: // instruction can be locked
                     break;
                 case GR:
                     assert(Group);
-                    if (!X86_LockPrefix_Groups[Group-1][OpcodeExtension]) return FALSE;
+                    if (!X86_LockPrefix_Groups[Group-1][OpcodeExtension]) return false;
                     break;
                 default:
                     assert(0);
-                    return FALSE;
+                    return false;
             }
             break;
 
@@ -4630,29 +4635,29 @@ INTERNAL BOOL IsValidLockPrefix(X86_INSTRUCTION *X86Instruction, U8 Opcode, U32 
             switch (X86_LockPrefix_2[Opcode])
             {
                 case 0: // lock prefix is not acceptable
-                    return FALSE;
+                    return false;
                 case 1: // lock prefix allowed
                     break;
                 case GR:
                     assert(Group);
-                    if (!X86_LockPrefix_Groups[Group-1][OpcodeExtension]) return FALSE;
+                    if (!X86_LockPrefix_Groups[Group-1][OpcodeExtension]) return false;
                     break;
                 default:
                     assert(0);
-                    return FALSE;
+                    return false;
             }
             break;
 
         default:
             assert(0);
-            return FALSE;
+            return false;
     }
 
     if (!X86Instruction->HasModRM || X86Instruction->modrm.mod == 3 || !X86Instruction->HasDstAddressing)
     {
-        DISASM_OUTPUT(("[0x%08I64X] ERROR: Instruction \"%s\" with LOCK prefix has invalid ModRM addressing\n", VIRTUAL_ADDRESS, X86Instruction->Opcode.Mnemonic, X86Instruction->Instruction->Address));
-        return FALSE;
+        DISASM_OUTPUT(("[0x%08llX] ERROR: Instruction \"%s\" with LOCK prefix has invalid ModRM addressing\n", VIRTUAL_ADDRESS, X86Instruction->Opcode.Mnemonic, X86Instruction->Instruction->Address));
+        return false;
     }
 
-    return TRUE;
+    return true;
 }

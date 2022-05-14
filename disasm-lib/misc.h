@@ -5,7 +5,9 @@
 extern "C" {
 #endif
 
-#include <windows.h>
+//#include <windows.h>
+#include <stdint.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include <assert.h>
@@ -36,7 +38,7 @@ extern "C" {
     #if (_MSC_VER >= 1300) && !defined(MIDL_PASS)
         #define DECLSPEC_ALIGN(x) __declspec(align(x))
     #else
-        #define DECLSPEC_ALIGN(x)
+        #define DECLSPEC_ALIGN(x) __attribute((aligned(x)))
     #endif
 #endif
 
