@@ -574,6 +574,25 @@ bool InitDisassembler(DISASSEMBLER *Disassembler, ARCHITECTURE_TYPE Architecture
 void CloseDisassembler(DISASSEMBLER *Disassembler);
 INSTRUCTION *GetInstruction(DISASSEMBLER *Disassembler, U64 VirtualAddress, U8 *Address, U32 Flags);
 
+////////////////////////////////////////////////////////////////////////////////////
+// Exported functions
+////////////////////////////////////////////////////////////////////////////////////
+
+extern ARCHITECTURE_FORMAT_FUNCTIONS X86;
+
+// Instruction setup
+bool X86_InitInstruction(struct _INSTRUCTION *Instruction);
+void X86_CloseInstruction(struct _INSTRUCTION *Instruction);
+
+// Instruction translator
+bool X86_TranslateInstruction(struct _INSTRUCTION *Instruction, bool Verbose);
+
+// Instruction decoder
+bool X86_GetInstruction(struct _INSTRUCTION *Instruction, U8 *Address, U32 Flags);
+
+// Function finding
+U8 *X86_FindFunctionByPrologue(struct _INSTRUCTION *Instruction, U8 *StartAddress, U8 *EndAddress, U32 Flags);
+
 #ifdef __cplusplus
 }
 #endif
