@@ -2569,7 +2569,7 @@ INTERNAL U8 *SetOperands(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
         OperandFlags = X86Opcode->OperandFlags[OperandIndex] & X86_OPFLAGS_MASK;
         OperandType = X86Opcode->OperandFlags[OperandIndex] & X86_OPTYPE_MASK;
         AddressMode = X86Opcode->OperandFlags[OperandIndex] & X86_AMODE_MASK;
-        if (Decode && OperandIndex != 0) APPENDS(", ");
+        if (Decode && Disassemble && OperandIndex != 0) APPENDS(", ");
 
         switch (OperandType)
         {
